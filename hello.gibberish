@@ -1,0 +1,14 @@
+# Create 2 queues
+repeat 2
+    > queueinit
+
+for q0
+    > reserve 2 # reserve 2 items in queue (queue is [.,.])
+
+push 1 # queue is [1,.]
+push 2 # queue is [1,2]
+
+add # pop 2 items from queue, add them, and push result to queue, so queue is [3,.]
+
+push 9
+push 7 # error: queue overflow
