@@ -51,10 +51,7 @@ const fs = require("node:fs/promises");
         line = lines[++li];
         ci = 0;
 
-        while (
-          li < lines.length &&
-          line.slice(0, depth) === ">".repeat(depth)
-        ) {
+        while (li < lines.length) {
           console.log(line);
           line = lines[++li];
           ci = 0;
