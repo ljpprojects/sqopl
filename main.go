@@ -865,7 +865,7 @@ func Interpet(instrs []Instruction, state *InterpreterState) error {
 }
 
 func main() {
-	file, err := os.Open("/Volumes/monster/gibberish/hello.gibberish")
+	file, err := os.Open("/Volumes/monster/gibberish/hello.sqopl")
 
 	if err != nil {
 		log.Fatal(err)

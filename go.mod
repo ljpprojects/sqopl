@@ -1,4 +1,4 @@
-module ljpprojects.org/gibberish
+module ljpprojects.org/sqopl
 
 go 1.24
 

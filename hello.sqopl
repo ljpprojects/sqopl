@@ -1,0 +1,38 @@
+# basic Hello, World! program
+
+queueinit
+
+# These are for DX
+# If these were not included, you would manually have to reserve queue space
+cfg.enable autoExpandQueues
+cfg.enable autoShrinkQueues
+
+with q0
+    # If you do not want to enable autoExpandQueues, comment that and uncomment this
+    # > reserve 13
+
+    > push 'H'
+    > push 'e'
+    > repeat 2
+        >> push 'l'
+    > push 'o'
+    > push ','
+    > push ' '
+    > push 'W'
+    > push 'o'
+    > push 'r'
+    > push 'l'
+    > push 'd'
+    > push ' '
+    > push 240
+    > push 159
+    > push 148
+    > push 165
+
+    # Maybe one day this can get simplfified to
+    # > push 'H', 'e', 'l', 'l', 'o', ',', ' ', 'W', 'o', 'r', 'l', 'd', 240, 159, 148, 165
+    # or
+    # > push "Hello, World 🔥"
+
+    # Dump everything in the queue, treating it as text, and concatenate it into one line of output
+    > dump.text.concat
