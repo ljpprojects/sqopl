@@ -1,0 +1,376 @@
+import std:io;
+import std:exitcode;
+
+const y = 34;
+
+struct Data {
+    let Number Integer32
+}
+
+fn memory -> escaping mut& Data {
+    var x Integer32 = 9;
+    let z = 3;
+
+    x = y * z;
+
+    # The type `mut& Data` declares a mutable reference poitning to an instance of Data
+    # By default, the pointer is not allowed to escape
+    # To allow escaping, we must use the `escaping mut& Data` type
+    let data escaping mut& Data = escaping mut& Data {
+        Number = x
+    };
+
+    data
+}
+
+# Example mem:Allocate signature
+# T cannot be inferred
+fn Allocate<T>(size CInteger) -> escaping mut&? T
+
+fn ToInteger32(val ToInteger32) -> Integer32 {
+    val.ConvertToInteger32(:)
+}
+
+# At runtime, val is represented as
+
+struct InterfaceFatPointer {
+    mtable  const& table[string]SomeFunction   # The method table associated with the ToInteger32 interface
+    type    Type                               # The Type returned by runtime:TypeFor<T>()
+    dataptr const& any                         # A pointer to the actual value (which, if required, is allocated in the caller's stack)
+}
+
+# Runtime equivavlent
+fn ToInteger32(val InterfaceFatPointer) -> Integer32 {
+    val.mtable["C11ToInteger32M18ConvertToInteger32"](self: val)
+}
+
+fn main -> int32 {
+    io:PrintLn(string: "Hello, World!");
+
+    exitcode:OK;
+}
+
+# lambda
+(...) -> ... {
+    ...
+}
+
+# if statement
+
+if ... {
+    ...
+}
+
+# if expression
+
+if ... {
+    ...
+} else {
+    ...
+}
+
+# Switch (works with integers only)
+
+switch n {
+    ... -> { ... }
+    else { ... }
+}
+
+# Match (works with any value)
+
+match v {
+    ... -> { ... }
+    else { ... }
+}
+
+# When (equivalent to if-else-if chain)
+
+when {
+    ... -> {}
+    else { ... }
+}
+
+# guarded statements
+
+guard var x = nullable else {
+    ...
+}
+
+guard let x = nullable else {
+    ...
+}
+
+# if-let/if-var
+
+if var x = nullable {
+    ...
+}
+
+if let x = nullable {
+    ...
+}
+
+# interface
+
+interface Foo : Bar {
+    let Prop Integer32;
+
+    fn DoFooThings(const& self) -> void;
+}
+
+# Classes (reference types)
+
+class Data {
+    let number Integer32;
+
+    new(number Integer32) {
+        self.number = number;
+    }
+
+    new?(str String) {
+        self.number = Integer32(str: str)?;
+    }
+
+    fn Static -> ... {
+        ...
+    }
+
+    fn Number(const& self) -> Integer32 {
+        self.number;
+    }
+}
+
+## Class usage
+
+let instance mut& Data = Data(number: 0)
+
+## Operator overload
+
+fn Foo.`+`(lhs Foo, rhs Foo) -> Foo {
+    ...
+}
+
+## C-Style Enums
+
+enum State(Integer32) {
+    On;
+    Off;
+}
+
+## Named Sum Types (Rust-Style Enums)
+
+enum Number {
+    Integer(Integer64);
+    Decimal(Float64);
+}
+
+## Namespaces
+
+namespace bar {
+    ...
+}
+
+## External Function
+
+extern fn malloc(size core:CInt) -> *core:CVoid;
+
+`extern` is equivalent to `extern "C"` in other laguages
+
+## Loops
+
+C-Style:
+
+for i Integer32 = 0; i < 10; i++ {
+    ...
+}
+
+Iterative:
+
+for i in range:InclusiveRange<Integer32>(from: 1, to: 10) {
+    ...
+}
+
+While loop:
+
+while cond {
+    ...
+}
+
+Infinite loop:
+
+while true {
+    ...
+}
+
+OR
+
+for i in range:Infinite() {
+    ...
+}
+
+OR
+
+forever {
+    ...
+}
+
+## Ternary
+
+cond -> ... else ...
+
+e.g.
+
+i % 2 == 0 -> 34 else 83
+
+## Defer
+
+defer {
+    ...
+}
+
+OR
+
+defer ...
+
+## Null Coalesce
+
+v ?? ...
+
+## Optional Chaining
+
+a?.b?.c
+
+a?.b?.c()
+
+## Type operations
+
+Check if a is castable to C (at compile time and runtime):
+
+a is C
+
+Cast a to C or give a compile error:
+
+a as C
+
+Cast a to C or generate a null value:
+
+a as? C
+
+If this cast is used on a value with a compile-time-known type,
+an error will be raised. This must be used on an interface object.
+
+Cast a to C or generate a runtime error:
+
+a as! C
+
+## Internal Macro Definition
+
+internal macro #repeat($n IntegerLiteral $block CodeBlock)
+
+## Custom Macro Definition
+
+macro #list([ $t Type ; $($e AnyExpression),+ ]) {
+    {
+        import? std:data;
+
+        data:List<$t>([$($e),+]);
+    }
+}
+
+## Macro Usage
+
+#list([Integer32; 1, 2, 3, 4, 5,])
+
+Expands to:
+
+{
+    import? std:data;
+
+    data:List<Integer32>([1, 2, 3, 4, 5,]);
+}
+
+## Destructuring Var/Let/Mixed
+
+For tuples:
+
+var (a Integer32, b String) = (1, "1")
+let (a Integer32, b String) = (2, "2")
+
+For arrays with compile-time known length:
+
+var [a Integer32, b Integer32] = [4, 5]
+let [a Integer32, b Integer32] = [4, 5]
+
+For arrays without compile-time known length:
+
+var [a Integer32, b Integer32]! = [4, 5]
+let [a Integer32, b Integer32]! = [4, 5]
+
+(if the array is of a different length a runtime error is thrown)
+
+var [a Integer32, b Integer32]? = [4, 5]
+let [a Integer32, b Integer32]? = [4, 5]
+
+(if the array is of a different length a and b are null)
+
+For structures/classes:
+
+var { a Integer32, b Integer32 } = ...
+let { a Integer32, b Integer32 } = ...
+
+You can only destructure public properties in classes,
+unless inside a method of the class
+
+Mixed mutability:
+
+(var a Integer32, let b Integer32) = (1, 2)
+
+## Constrained Let/Var
+
+enum Number {
+    Integer(Integer64);
+    Decimal(Float64);
+}
+
+let num Number = Number.Integer(56 as Integer64);
+
+let Number.Decimal(dec) = num else {
+    # The else block is ran
+    # It must evaluate to the type ! (never)
+    # Or return
+    ...
+}
+
+or
+
+var Number.Decimal(dec) = num else {
+    ...
+}
+
+Or mixed mutability:
+
+Multi.One(var a, let b, var c) = foo else {
+    ...
+}
+
+## Constrained Destructuring
+
+var (a Integer32, Number.Integer(b)) = (1, Number.Integer(1 as Integer64))
+
+## Tuple Destructuring (Regex)
+
+\(((var |let )?([a-zA-Z_]\w*) TYPE(?:\s*,\s*)?){1,}\)
+
+## Structure/Class Destructuring (Regex)
+
+{\s?((var |let )?([a-zA-Z_]\w*) TYPE(?:\s*,\s*)?){1,}\s?}
+
+## Reference Destructuring
+
+const& (Integer32, String) example:
+
+let (a const& Integer, b const& String) = ...
+
+## Reference Destructuring on Classes
+
+let const& { a const& Integer32, b const& Integer32 } = class
