@@ -1,0 +1,34 @@
+include std:io
+include std:math
+
+enum Shape {
+    Circle(Radius Float64);
+    Square(SideLength Float64);
+    Rectangle(Width Float64, Height Float64);
+    Triangle(Base Float64, Height Float64, AnglesDeg [3]Integer32);
+
+    computed var Area Float64
+        get(const& self) {
+            match self {
+                Shape.Circle(Radius) -> math:Pi * math:Square(Radius);
+                Shape.Square(SideLength) -> math:Square(SideLength);
+                Shape.Rectangle(Width, Height) -> Width * Height;
+                Shape.Triangle(Base, Height) -> 1/2 * Base * Height
+            };
+        }
+
+    computed var Perimeter Float64
+        get(const& self) {
+            match self {
+                Shape.Circle(Radius) -> 2 * math:Pi * Radius;
+                Shape.Square(SideLength) -> 4 * SideLength;
+                Shape.Rectangle(Width, Height) -> 2 * Width + 2 * Height;
+                Shape.Triangle(Base, Height, AnglesDeg) -> {
+                    let A Float64 = Float64(AnglesDeg[0]);
+                    let C Float64 = Float64(AnglesDeg[2]);
+
+                    Base + Height / math:Sin(A) + Height / math:Sin(C);
+                };
+            };
+        }
+}

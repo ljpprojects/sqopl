@@ -72,11 +72,33 @@ const (
 	IfVarExpressionASTNodeKind
 	NullCoalesceExpressionASTNodeKind
 	BubbleValueToReturnASTNodeKind
+	MutableReferenceTypeASTNodeKind
+	ImmutableReferenceTypeASTNodeKind
+	RawPointerTypeASTNodeKind
+	NamedTypeASTNodeKind
+	UntaggedUnionTypeASTNodeKind
+	NeverTypeASTNodeKind
+	TableTypeASTNodeKind
+	ArrayTypeASTNodeKind
+	SliceTypeASTNodeKind
+	ComputedVarDefinitionASTNodeKind
 )
 
 type ASTNodeGroup []ASTNodeKind
 
 var (
+	TypeASTNodeGroup ASTNodeGroup = ASTNodeGroup{
+		MutableReferenceTypeASTNodeKind,
+		ImmutableReferenceTypeASTNodeKind,
+		RawPointerTypeASTNodeKind,
+		NamedTypeASTNodeKind,
+		UntaggedUnionTypeASTNodeKind,
+		NeverTypeASTNodeKind,
+		TableTypeASTNodeKind,
+		ArrayTypeASTNodeKind,
+		SliceTypeASTNodeKind,
+	}
+
 	MetaASTNodeGroup ASTNodeGroup = ASTNodeGroup{
 		MacroUsageASTNodeKind,
 		MacroVariableUsageASTNodeKind,
@@ -120,6 +142,7 @@ var (
 		SumTypeEnumDefinitionASTNodeKind,
 		NamespaceDefinitionASTNodeKind,
 		CustomMacroDefinitionASTNodeKind,
+		ComputedVarDefinitionASTNodeKind,
 	}
 
 	DeclarationASTNodeGroup ASTNodeGroup = ASTNodeGroup{
@@ -214,51 +237,169 @@ type Type interface {
 }
 
 type (
-	ImportStatementASTNodeKind struct {
+	TypeGenericASTNode struct {
+		ConformsTo []NamedTypeASTNode
+	}
+
+	RefType interface {
+		Type
+
+		Mutable() bool
+		Escaping() bool
+		InnerType() Type
+	}
+
+	MutableReference struct {
+		Loc      Location
+		escaping bool
+		inner    Type
+	}
+
+	ImmutableReference struct {
+		Loc      Location
+		escaping bool
+		inner    Type
+	}
+
+	RawPointer struct {
+		Loc   Location
+		inner Type
+	}
+
+	NamedTypeASTNode struct {
+		Loc      Location
+		Name     string
+		Generics map[string]TypeGenericASTNode
+	}
+
+	UntaggedUnionTypeASTNode struct {
+		Loc   Location
+		Types []Type
+	}
+
+	NeverTypeASTNode struct {
+		Loc Location
+	}
+
+	TableTypeASTNode struct {
+		Loc Location
+
+		KeyType   Type
+		ValueType Type
+	}
+
+	ArrayTypeASTNode struct {
+		Loc Location
+
+		ValueType Type
+		Length    uint64
+	}
+
+	SliceTypeASTNode struct {
+		Loc Location
+
+		ValueType Type
+	}
+)
+
+func (ptr RawPointer) typeNode()               {}
+func (ref MutableReference) typeNode()         {}
+func (ref ImmutableReference) typeNode()       {}
+func (typ NamedTypeASTNode) typeNode()         {}
+func (typ UntaggedUnionTypeASTNode) typeNode() {}
+func (typ NeverTypeASTNode) typeNode()         {}
+func (typ TableTypeASTNode) typeNode()         {}
+func (typ ArrayTypeASTNode) typeNode()         {}
+func (typ SliceTypeASTNode) typeNode()         {}
+
+func (ptr RawPointer) Mutable() bool         { return true }
+func (ref MutableReference) Mutable() bool   { return true }
+func (ref ImmutableReference) Mutable() bool { return false }
+
+func (ptr RawPointer) Escaping() bool         { return true }
+func (ref MutableReference) Escaping() bool   { return ref.escaping }
+func (ref ImmutableReference) Escaping() bool { return ref.escaping }
+
+func (ptr RawPointer) InnerType() Type         { return ptr.inner }
+func (ref MutableReference) InnerType() Type   { return ref.inner }
+func (ref ImmutableReference) InnerType() Type { return ref.inner }
+
+func (ptr RawPointer) Location() Location               { return ptr.Loc }
+func (ref MutableReference) Location() Location         { return ref.Loc }
+func (ref ImmutableReference) Location() Location       { return ref.Loc }
+func (typ NamedTypeASTNode) Location() Location         { return typ.Loc }
+func (typ UntaggedUnionTypeASTNode) Location() Location { return typ.Loc }
+func (typ NeverTypeASTNode) Location() Location         { return typ.Loc }
+func (typ TableTypeASTNode) Location() Location         { return typ.Loc }
+func (typ ArrayTypeASTNode) Location() Location         { return typ.Loc }
+func (typ SliceTypeASTNode) Location() Location         { return typ.Loc }
+
+func (ptr RawPointer) Kind() ASTNodeKind               { return RawPointerTypeASTNodeKind }
+func (ref MutableReference) Kind() ASTNodeKind         { return MutableReferenceTypeASTNodeKind }
+func (ref ImmutableReference) Kind() ASTNodeKind       { return ImmutableReferenceTypeASTNodeKind }
+func (typ NamedTypeASTNode) Kind() ASTNodeKind         { return NamedTypeASTNodeKind }
+func (typ UntaggedUnionTypeASTNode) Kind() ASTNodeKind { return UntaggedUnionTypeASTNodeKind }
+func (typ NeverTypeASTNode) Kind() ASTNodeKind         { return NeverTypeASTNodeKind }
+func (typ TableTypeASTNode) Kind() ASTNodeKind         { return TableTypeASTNodeKind }
+func (typ ArrayTypeASTNode) Kind() ASTNodeKind         { return ArrayTypeASTNodeKind }
+func (typ SliceTypeASTNode) Kind() ASTNodeKind         { return SliceTypeASTNodeKind }
+
+func (ptr RawPointer) Group() ASTNodeGroup               { return TypeASTNodeGroup }
+func (ref MutableReference) Group() ASTNodeGroup         { return TypeASTNodeGroup }
+func (ref ImmutableReference) Group() ASTNodeGroup       { return TypeASTNodeGroup }
+func (typ NamedTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
+func (typ UntaggedUnionTypeASTNode) Group() ASTNodeGroup { return TypeASTNodeGroup }
+func (typ NeverTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
+func (typ TableTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
+func (typ ArrayTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
+func (typ SliceTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
+
+type (
+	ImportStatementASTNode struct {
 		Loc  Location
 		Name string
 	}
 
-	ConstDefinitionASTNodeKind struct {
+	ConstDefinitionASTNode struct {
 		Loc   Location
 		Name  string
 		Value Expression
 		Type  utils.Optional[Type]
 	}
 
-	VarDefinitionASTNodeKind struct {
+	VarDefinitionASTNode struct {
 		Loc   Location
 		Name  string
 		Value Expression
 		Type  utils.Optional[Type]
 	}
 
-	LetDefinitionASTNodeKind struct {
+	LetDefinitionASTNode struct {
 		Loc   Location
 		Name  string
 		Value Expression
 		Type  utils.Optional[Type]
 	}
 
-	VariableUsageExpresionASTNodeKind struct {
+	VariableUsageExpresionASTNode struct {
 		Loc  Location
 		Name string
 	}
 
-	BinaryExpressionASTNodeKind struct {
+	BinaryExpressionASTNode struct {
 		Loc      Location
 		Operator string
 		Left     Expression
 		Right    Expression
 	}
 
-	PostfixUnaryExpressionASTNodeKind struct {
+	PostfixUnaryExpressionASTNode struct {
 		Loc      Location
 		Operator string
 		Left     Expression
 	}
 
-	PrefixUnaryExpressionASTNodeKind struct {
+	PrefixUnaryExpressionASTNode struct {
 		Loc      Location
 		Operator string
 		Right    Expression
@@ -271,7 +412,7 @@ type (
 		Type      Type
 	}
 
-	StructureDefinitionASTNodeKind struct {
+	StructureDefinitionASTNode struct {
 		Loc    Location
 		Name   string
 		Fields StructureDefFields
@@ -299,7 +440,7 @@ type (
 		ArgumentTypes []Type
 	}
 
-	ClassDefinitionASTNodeKind struct {
+	ClassDefinitionASTNode struct {
 		Loc          Location
 		Name         string
 		Fields       ClassDefFields
@@ -307,111 +448,220 @@ type (
 		Constructors ClassDefConstructors
 	}
 
-	FunctionDefinitionASTNodeKind struct{}
+	FunctionDefinitionASTNode struct {
+		Loc        Location
+		Name       string
+		ReturnType Type
+		Parameters map[string]Type
+		Generics   map[string]TypeGenericASTNode
+		Body       []ASTNode
+	}
 
-	MethodDefinitionASTNodeKind struct{}
+	MethodDefinitionASTNode struct {
+		Loc         Location
+		Name        string
+		ReturnType  Type
+		Parameters  map[string]Type
+		ContextType Type
+		Generics    map[string]TypeGenericASTNode
+		Body        []ASTNode
+	}
 
-	OperatorOverloadASTNodeKind struct{}
+	OperatorOverloadASTNode struct {
+		Loc           Location
+		Operator      string
+		ReturnType    Type
+		ContextType   Type
+		RightHandType Type
+		Body          []ASTNode
+	}
 
-	AssignmentStatementASTNodeKind struct{}
+	AssignmentStatementASTNode struct {
+		Loc   Location
+		Left  Expression
+		Right Expression
+	}
 
-	StructureInitilisationExpressionASTNodeKind struct{}
+	StructureInitilisationExpressionASTNode struct {
+		Loc         Location
+		StructName  string
+		FieldValues map[string]Expression
+	}
 
-	StructureRefInitilisationExpressionASTNodeKind struct{}
+	StructureRefInitilisationExpressionASTNode struct {
+		Loc         Location
+		StructName  string
+		FieldValues map[string]Expression
+		RefType     RefType
+	}
 
-	ImplicitReturnASTNodeKind struct{}
+	ImplicitReturnASTNode struct {
+		Loc   Location
+		Value Expression
+	}
 
-	ExplicitReturnASTNodeKind struct{}
+	ExplicitReturnASTNode struct {
+		Loc   Location
+		Value Expression
+	}
 
-	FunctionCallExpressionASTNodeKind struct{}
+	FunctionCallExpressionASTNode struct {
+		Loc        Location
+		Name       string
+		Parameters map[string]Expression
+		Generics   map[string]TypeGenericASTNode
+	}
 
-	MethodCallExpressionASTNodeKind struct{}
+	MethodCallExpressionASTNode struct {
+		Loc        Location
+		Context    Type
+		Name       string
+		Parameters map[string]Expression
+		Generics   map[string]TypeGenericASTNode
+	}
 
-	MemberExpressionASTNodeKind struct{}
+	MemberExpressionASTNode struct {
+		Loc      Location
+		Segments []Expression
+	}
 
-	ModulePathASTNodeKind struct{}
+	ModulePathASTNode struct {
+		Loc      Location
+		Segments []Expression
+	}
 
-	LambdaExpressionASTNodeKind struct{}
+	LambdaExpressionASTNode struct {
+		Loc        Location
+		Parameters map[string]Type
+		ReturnType Type
+		Body       []ASTNode
+	}
 
-	IfExpressionASTNodeKind struct{}
+	IfExpressionASTNode struct {
+		Loc          Location
+		Condition    Expression
+		Body         []ASTNode
+		FallbackBody []ASTNode
+	}
 
-	IfStatementASTNodeKind struct{}
+	IfStatementASTNode struct {
+		Loc       Location
+		Condition Expression
+		Body      []ASTNode
+	}
 
-	SwitchStatementASTNodeKind struct{}
+	SwitchStatementCase struct {
+		Loc  Location
+		Body []ASTNode
+	}
 
-	MatchExpressionASTNodeKind struct{}
+	SwitchStatementASTNode struct {
+		Loc   Location
+		Value Expression
+		Cases map[Expression]SwitchStatementCase
+	}
 
-	WhenExpressionASTNodeKind struct{}
+	MatchExpressionCase struct {
+		Loc  Location
+		Code []ASTNode
+	}
 
-	InterfaceDefinitionASTNodeKind struct{}
+	MatchOrWhenExpressionCase struct {
+		Loc  Location
+		Code []ASTNode
+	}
 
-	StringLiteralASTNodeKind struct{}
+	MatchExpressionASTNode struct {
+		Loc          Location
+		Value        Expression
+		Cases        map[TupleDestructuringASTNode]MatchOrWhenExpressionCase
+		FallbackCase MatchOrWhenExpressionCase
+	}
 
-	ArrayLiteralASTNodeKind struct{}
+	WhenExpressionASTNode struct {
+		Loc          Location
+		Cases        map[Expression]MatchOrWhenExpressionCase
+		FallbackCase MatchOrWhenExpressionCase
+	}
 
-	IntegerLiteralASTNodeKind struct{}
+	InterfaceDefField struct {
+		Loc        Location
+		IsComputed bool
+	}
 
-	DecimalLiteralASTNodeKind struct{}
+	InterfaceDefinitionASTNode struct {
+		Loc       Location
+		SubTypeOf NamedTypeASTNode
+		Fields    map[string]InterfaceDefField
+	}
 
-	CStyleEnumDefinitionASTNodeKind struct{}
+	StringLiteralASTNode struct{}
 
-	SumTypeEnumDefinitionASTNodeKind struct{}
+	ArrayLiteralASTNode struct{}
 
-	NamespaceDefinitionASTNodeKind struct{}
+	IntegerLiteralASTNode struct{}
 
-	ExternalFnDeclarationASTNodeKind struct{}
+	DecimalLiteralASTNode struct{}
 
-	CStyleForLoopStatementASTNodeKind struct{}
+	CStyleEnumDefinitionASTNode struct{}
 
-	ForInLoopStatementASTNodeKind struct{}
+	SumTypeEnumDefinitionASTNode struct{}
 
-	WhileLoopStatementASTNodeKind struct{}
+	NamespaceDefinitionASTNode struct{}
 
-	ForeverLoopStatementASTNodeKind struct{}
+	ExternalFnDeclarationASTNode struct{}
 
-	TernaryExpressionASTNodeKind struct{}
+	CStyleForLoopStatementASTNode struct{}
 
-	OptionalChainingASTNodeKind struct{}
+	ForInLoopStatementASTNode struct{}
 
-	OptionalChainingCallASTNodeKind struct{}
+	WhileLoopStatementASTNode struct{}
 
-	TypeCastableQueryExpressionASTNodeKind struct{}
+	ForeverLoopStatementASTNode struct{}
 
-	TypeCastExpressionASTNodeKind struct{}
+	TernaryExpressionASTNode struct{}
 
-	RuntimeTypeCastExpressionASTNodeKind struct{}
+	OptionalChainingASTNode struct{}
 
-	InternalMacroDeclarationASTNodeKind struct{}
+	OptionalChainingCallASTNode struct{}
 
-	CustomMacroDefinitionASTNodeKind struct{}
+	TypeCastableQueryExpressionASTNode struct{}
 
-	MacroUsageASTNodeKind struct{}
+	TypeCastExpressionASTNode struct{}
 
-	MacroVariableUsageASTNodeKind struct{}
+	RuntimeTypeCastExpressionASTNode struct{}
 
-	BlockASTNodeKind struct{}
+	InternalMacroDeclarationASTNode struct{}
 
-	TupleDestructuringASTNodeKind struct{}
+	CustomMacroDefinitionASTNode struct{}
 
-	ArrayCompTimeDestructuringASTNodeKind struct{}
+	MacroUsageASTNode struct{}
 
-	ArrayRuntimeDestructuringASTNodeKind struct{}
+	MacroVariableUsageASTNode struct{}
 
-	StructOrClassDestructuringASTNodeKind struct{}
+	BlockASTNode struct{}
 
-	ReferenceClassDestructuringASTNodeKind struct{}
+	TupleDestructuringASTNode struct{}
 
-	ConstraintASTNodeKind struct{}
+	ArrayCompTimeDestructuringASTNode struct{}
 
-	IfLetStatementASTNodeKind struct{}
+	ArrayRuntimeDestructuringASTNode struct{}
 
-	IfVarStatementASTNodeKind struct{}
+	StructOrClassDestructuringASTNode struct{}
 
-	IfLetExpressionASTNodeKind struct{}
+	ReferenceClassDestructuringASTNode struct{}
 
-	IfVarExpressionASTNodeKind struct{}
+	ConstraintASTNode struct{}
 
-	NullCoalesceExpressionASTNodeKind struct{}
+	IfLetStatementASTNode struct{}
 
-	BubbleValueToReturnASTNodeKind struct{}
+	IfVarStatementASTNode struct{}
+
+	IfLetExpressionASTNode struct{}
+
+	IfVarExpressionASTNode struct{}
+
+	NullCoalesceExpressionASTNode struct{}
+
+	BubbleValueToReturnASTNode struct{}
 )
