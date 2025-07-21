@@ -1,6 +1,17 @@
 package lexer
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+
+	"ljpprojects.org/sqopl/utils"
+)
+
+type Location utils.Range[Position]
+
+func InitLocation(start Position, end Position) Location {
+	return Location(utils.InitRange(start, end))
+}
 
 type TokenGroup []rune
 
@@ -18,6 +29,7 @@ var (
 type Token struct {
 	group      *TokenGroup
 	characters string
+	loc        Location
 }
 
 func (t Token) Characters() string {
@@ -26,6 +38,26 @@ func (t Token) Characters() string {
 
 func (t Token) Group() *TokenGroup {
 	return t.group
+}
+
+func (t Token) Startpos() Position {
+	return t.loc.Start
+}
+
+func (t Token) Endpos() Position {
+	return t.loc.End
+}
+
+func (t Token) ToDisplayString() string {
+	return fmt.Sprintf(
+		"%s(%s) @ (%d:%d)-(%d:%d)",
+		t.group.ToDisplayString(),
+		t.characters,
+		t.loc.Start.line,
+		t.loc.Start.column,
+		t.loc.End.line,
+		t.loc.End.column,
+	)
 }
 
 func (g *TokenGroup) ToDisplayString() string {
@@ -45,5 +77,13 @@ func (g *TokenGroup) ToDisplayString() string {
 		return "Decimals"
 	} else {
 		return "Unknown"
+	}
+}
+
+func InitToken(group *TokenGroup, characters string, loc Location) Token {
+	return Token{
+		group,
+		characters,
+		loc,
 	}
 }

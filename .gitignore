@@ -33,3 +33,6 @@ go.sum
 # Editor/IDE
 .idea/
 .vscode/
+
+# AppleDouble files
+._**

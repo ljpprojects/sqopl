@@ -1,5 +1,7 @@
-import std:io;
-import std:exitcode;
+import std:{
+    io,
+    exitcode
+};
 
 const y = 34;
 
@@ -259,10 +261,6 @@ a as? C
 If this cast is used on a value with a compile-time-known type,
 an error will be raised. This must be used on an interface object.
 
-Cast a to C or generate a runtime error:
-
-a as! C
-
 ## Internal Macro Definition
 
 internal macro #repeat($n IntegerLiteral $block CodeBlock)
@@ -301,13 +299,6 @@ For arrays with compile-time known length:
 var [a Integer32, b Integer32] = [4, 5]
 let [a Integer32, b Integer32] = [4, 5]
 
-For arrays without compile-time known length:
-
-var [a Integer32, b Integer32]! = [4, 5]
-let [a Integer32, b Integer32]! = [4, 5]
-
-(if the array is of a different length a runtime error is thrown)
-
 var [a Integer32, b Integer32]? = [4, 5]
 let [a Integer32, b Integer32]? = [4, 5]
 
@@ -325,19 +316,63 @@ Mixed mutability:
 
 (var a Integer32, let b Integer32) = (1, 2)
 
-## Constrained Let/Var
+## Constraint
 
 enum Number {
-    Integer(Integer64);
-    Decimal(Float64);
+    Integer(Int Integer64);
+    Decimal(Dec Float64);
 }
+
+Number.Integer
+
+OR
+
+Number.Integer(Int)
+
+OR
+
+Number.Integer(var Int)
+
+OR
+
+Number.Integer(let Int)
+
+OR
+
+Number.Integer(Int as var alias)
+
+OR
+
+Number.Integer(Int as let alias)
+
+OR
+
+Number.Integer(Int as alias)
+
+OR
+
+Number.Integer(Int) where
+    Int == x;
+    x % 2 == 0
+
+e.g.
+
+let Number.Decimal(number = Dec) where
+    Dec <= 10;
+    Dec >= 5
+= num else {
+    ...
+}
+
+## Constrained Let/Var
 
 let num Number = Number.Integer(56 as Integer64);
 
-let Number.Decimal(dec) = num else {
+let Number.Decimal(Dec as dec) = num else {
     # The else block is ran
-    # It must evaluate to the type ! (never)
-    # Or return
+    # It must either
+    #    A: evaluate to the type ! (the never type) or
+    #    B: return
     ...
 }
 
@@ -369,8 +404,8 @@ var (a Integer32, Number.Integer(b)) = (1, Number.Integer(1 as Integer64))
 
 const& (Integer32, String) example:
 
-let (a const& Integer, b const& String) = ...
+let const& (a Integer, b String) = ...
 
 ## Reference Destructuring on Classes
 
-let const& { a const& Integer32, b const& Integer32 } = class
+let const& { a Integer32, b Integer32 } = class

@@ -1,0 +1,10 @@
+import std:io;
+import std:math;
+
+# This is not the actual main function, but it is called in the actual main function
+# This allows for:
+#   - slices (or any other type implementing ProgArgs) to be used for the arguments
+#   - a std:error:Error (or any other type implementing ProgExit) to be returned
+fn Main(args const[] string) -> Integer32 {
+    0;
+}

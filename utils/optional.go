@@ -1,6 +1,8 @@
 package utils
 
-import "fmt"
+import (
+	"fmt"
+)
 
 var ErrOptionalHasNoValue = fmt.Errorf("Optional value does not contain a value.")
 
@@ -43,6 +45,7 @@ func (o Optional[T]) Value() (T, error) {
 	if o.valuePresent {
 		return o.value, nil
 	} else {
+		//log.Println(string(debug.Stack()))
 		return o.value, ErrOptionalHasNoValue
 	}
 }
