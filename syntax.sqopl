@@ -409,3 +409,20 @@ let const& (a Integer, b String) = ...
 ## Reference Destructuring on Classes
 
 let const& { a Integer32, b Integer32 } = class
+
+## Dynamic References (for runtime-only types)
+
+dyn const& T
+dyn mut& T
+escaping dyn const& T
+escaping dyn mut& T
+
+Any type:
+
+dyn const& Anything
+dyn mut& Anything
+
+## Dynamic slices?
+
+dyn const[] T
+dyn mut[] T
