@@ -122,6 +122,8 @@ func main() {
 	parser := parser.NewParser(lexer)
 
 	for {
+		log.Println("Parsing statement.")
+
 		mnd, err := parser.ParseStatement()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Parse error: %v\n", err)

@@ -90,7 +90,7 @@ func (p *Parser) ExpectTokenOfGroup(expectGroup *lexer.TokenGroup) (lexer.Token,
 		return lexer.Token{}, nil
 	}
 
-	if tk.Group() != expectGroup {
+	if tk.Group != expectGroup {
 		return lexer.Token{}, ParseErrorExpectedToken{
 			Expected: lexer.InitToken(expectGroup, "[ANYTHING]", lexer.Location{}),
 			Got:      tk,
@@ -124,7 +124,8 @@ func (p *Parser) ExpectOneOfCharacters(expectOneOf map[rune]*lexer.TokenGroup) (
 		return tk, err
 	}
 
-	return lexer.Token{}, fmt.Errorf("fuck")
+	// This is to satisfy the compiler, it should never be executed.
+	return lexer.Token{}, nil
 }
 
 func (p *Parser) ParseNamedType() (NamedTypeASTNode, error) {
