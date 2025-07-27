@@ -425,18 +425,21 @@ type (
 		Mutable() bool
 		Escaping() bool
 		InnerType() Type
+		IsDyn() bool
 	}
 
 	MutableReference struct {
 		Loc        lexer.Location
 		IsEscaping bool
 		Inner      Type
+		IsDynamic  bool
 	}
 
 	ImmutableReference struct {
 		Loc        lexer.Location
 		IsEscaping bool
 		Inner      Type
+		IsDynamic  bool
 	}
 
 	SliceTypeASTNode struct {
@@ -447,8 +450,9 @@ type (
 	}
 
 	RawPointer struct {
-		Loc   lexer.Location
-		Inner Type
+		Loc       lexer.Location
+		Inner     Type
+		IsDynamic bool
 	}
 
 	NamedTypeASTNode struct {
@@ -511,6 +515,11 @@ func (ptr RawPointer) InnerType() Type         { return ptr.Inner }
 func (ref MutableReference) InnerType() Type   { return ref.Inner }
 func (slc SliceTypeASTNode) InnerType() Type   { return slc.ValueType }
 func (ref ImmutableReference) InnerType() Type { return ref.Inner }
+
+func (ptr RawPointer) IsDyn() bool         { return ptr.IsDynamic }
+func (ref MutableReference) IsDyn() bool   { return ref.IsDynamic }
+func (slc SliceTypeASTNode) IsDyn() bool   { return false }
+func (ref ImmutableReference) IsDyn() bool { return ref.IsDynamic }
 
 func (ptr RawPointer) Location() lexer.Location               { return ptr.Loc }
 func (ref MutableReference) Location() lexer.Location         { return ref.Loc }

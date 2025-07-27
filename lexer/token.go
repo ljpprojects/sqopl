@@ -61,6 +61,10 @@ func (t Token) ToDisplayString() string {
 }
 
 func (g *TokenGroup) ToDisplayString() string {
+	if g == nil {
+		return "Invalid"
+	}
+
 	if slices.Compare(*g, TokenOperatorGroup) == 0 {
 		return "Operators"
 	} else if slices.Compare(*g, TokenSeparatorGroup) == 0 {
