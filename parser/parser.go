@@ -3,6 +3,7 @@ package parser
 import (
 	"fmt"
 	"maps"
+	"os"
 	"slices"
 
 	"ljpprojects.org/sqopl/lexer"
@@ -139,47 +140,12 @@ func (p *Parser) ParseNamedType() (NamedTypeASTNode, error) {
 
 	return NamedTypeASTNode{
 		Loc:      lexer.InitLocation(startpos, p.lexer.CurrentPos()),
-		Name:     tk.Characters(),
+		Name:     tk.Characters,
 		Generics: map[string]TypeGenericASTNode{},
 	}, nil
 }
 
-func (p *Parser) ParseMutableReferenceType(isEscaping bool, isDyn bool) (MutableReference, error) {
-	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "mut", lexer.Location{}))
-
-	if err != nil {
-		return MutableReference{}, err
-	}
-
-	startpos := tk.Startpos()
-
-	if _, err := p.ExpectCharacter('&', &lexer.TokenOperatorGroup); err != nil {
-		return MutableReference{}, err
-	}
-
-	typ, err := p.ParseNamedType()
-
-	if err != nil {
-		return MutableReference{}, err
-	}
-
-	return MutableReference{
-		Loc:        lexer.InitLocation(startpos, p.lexer.CurrentPos()),
-		IsEscaping: isEscaping,
-		Inner:      typ,
-		IsDynamic:  isDyn,
-	}, nil
-}
-
-func (p *Parser) ParseImmutableReferenceType(isEscaping bool, isDyn bool) (ImmutableReference, error) {
-	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "const", lexer.Location{}))
-
-	if err != nil {
-		return ImmutableReference{}, err
-	}
-
-	startpos := tk.Startpos()
-
+func (p *Parser) ParseReferenceType(isEscaping bool, isDyn bool, startpos lexer.Position) (ImmutableReference, error) {
 	if _, err := p.ExpectCharacter('&', &lexer.TokenOperatorGroup); err != nil {
 		return ImmutableReference{}, err
 	}
@@ -198,43 +164,12 @@ func (p *Parser) ParseImmutableReferenceType(isEscaping bool, isDyn bool) (Immut
 	}, nil
 }
 
-func (p *Parser) ParseMutableSliceType(isEscaping bool) (SliceTypeASTNode, error) {
-	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "mut", lexer.Location{}))
-
-	if err != nil {
+func (p *Parser) ParseSliceType(isEscaping bool, startpos lexer.Position) (SliceTypeASTNode, error) {
+	if _, err := p.ExpectCharacter('[', &lexer.TokenGroupingGroup); err != nil {
 		return SliceTypeASTNode{}, err
 	}
 
-	startpos := tk.Startpos()
-
-	if _, err := p.ExpectCharacter('&', &lexer.TokenOperatorGroup); err != nil {
-		return SliceTypeASTNode{}, err
-	}
-
-	typ, err := p.ParseNamedType()
-
-	if err != nil {
-		return SliceTypeASTNode{}, err
-	}
-
-	return SliceTypeASTNode{
-		Loc:        lexer.InitLocation(startpos, p.lexer.CurrentPos()),
-		IsEscaping: isEscaping,
-		IsMutable:  true,
-		ValueType:  typ,
-	}, nil
-}
-
-func (p *Parser) ParseImmutableSliceType(isEscaping bool) (SliceTypeASTNode, error) {
-	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "const", lexer.Location{}))
-
-	if err != nil {
-		return SliceTypeASTNode{}, err
-	}
-
-	startpos := tk.Startpos()
-
-	if _, err := p.ExpectCharacter('&', &lexer.TokenOperatorGroup); err != nil {
+	if _, err := p.ExpectCharacter(']', &lexer.TokenGroupingGroup); err != nil {
 		return SliceTypeASTNode{}, err
 	}
 
@@ -252,9 +187,125 @@ func (p *Parser) ParseImmutableSliceType(isEscaping bool) (SliceTypeASTNode, err
 	}, nil
 }
 
+func (p *Parser) ParseAndDetermineRefSubType(isEscaping bool, isDyn bool, startpos lexer.Position) (RefType, error) {
+	if _, err := p.NextToken(); err != nil {
+		return nil, err
+	}
+
+	mtk, err := p.PeekToken()
+	if err != nil {
+		return nil, err
+	}
+
+	tk, err := mtk.Value()
+	if err != nil {
+		return nil, ParseErrorUnexpectedEOF{
+			WhileParsing: ImmutableReferenceTypeASTNodeKind,
+		}
+	}
+
+	switch tk.Characters {
+	case "[":
+		return p.ParseSliceType(isEscaping, startpos)
+	case "&":
+		return p.ParseReferenceType(isEscaping, isDyn, startpos)
+	}
+
+	_, err = p.ExpectOneOfCharacters(map[rune]*lexer.TokenGroup{
+		'[': &lexer.TokenGroupingGroup,
+		'&': &lexer.TokenOperatorGroup,
+	})
+
+	if err == nil {
+		fmt.Println("How the fuck did this happen? It matched something that it said wasn't there!")
+		os.Exit(1)
+	}
+
+	return nil, err
+}
+
+func (p *Parser) ParseAndDertermineRefMutability(isEscaping bool, isDyn bool, startpos utils.Optional[lexer.Position]) (RefType, error) {
+	mtk, err := p.PeekToken()
+
+	if err != nil {
+		return nil, err
+	}
+
+	tk, err := mtk.Value()
+
+	if err != nil {
+		return nil, ParseErrorUnexpectedEOF{
+			WhileParsing: ImmutableReferenceTypeASTNodeKind,
+		}
+	}
+
+	switch tk.Characters {
+	case "const", "mut":
+		sp := tk.Startpos()
+		if psp, err := startpos.Value(); err == nil {
+			sp = psp
+		}
+
+		return p.ParseAndDetermineRefSubType(isEscaping, isDyn, sp)
+	case "escaping":
+		if _, err := p.NextToken(); err != nil {
+			return nil, err
+		}
+
+		sp := tk.Startpos()
+
+		return p.ParseReferenceType(true, false, sp)
+	case "dyn":
+		sp := tk.Startpos()
+		if psp, err := startpos.Value(); err == nil {
+			sp = psp
+		}
+
+		return p.ParseReferenceType(isEscaping, true, sp)
+	}
+
+	return nil, fmt.Errorf("Why did you do this? Why did you call this function without a reference type?")
+}
+
+func (p *Parser) ParseType() (Type, error) {
+	mtk, err := p.PeekToken()
+
+	if err != nil {
+		return nil, err
+	}
+
+	tk, err := mtk.Value()
+
+	if err != nil {
+		return nil, ParseErrorUnexpectedEOF{
+			WhileParsing: ImmutableReferenceTypeASTNodeKind,
+		}
+	}
+
+	switch tk.Characters {
+	case "escaping", "dyn", "const", "mut":
+		return p.ParseAndDertermineRefMutability(false, false, utils.NoneOptional[lexer.Position]())
+	default:
+		return p.ParseNamedType()
+	}
+}
+
+func (p *Parser) ParseFnDefinition() (FunctionDefinitionASTNode, error) {
+	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "fn", lexer.Location{}))
+	if err != nil {
+		return FunctionDefinitionASTNode{}, err
+	}
+
+	startpos := tk.Startpos()
+
+	name, err := p.ExpectTokenOfGroup(&lexer.TokenIdentifierGroup)
+	if err != nil {
+		return FunctionDefinitionASTNode{}, nil
+	}
+}
+
 func (p *Parser) ParseImportStatement() (ImportStatementASTNode, error) {
 	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "import", lexer.Location{}))
-
 	if err != nil {
 		return ImportStatementASTNode{}, err
 	}
@@ -267,7 +318,7 @@ func (p *Parser) ParseImportStatement() (ImportStatementASTNode, error) {
 		return ImportStatementASTNode{}, err
 	}
 
-	path := []string{tk.Characters()}
+	path := []string{tk.Characters}
 
 	for {
 		_, err := p.ExpectCharacter(':', &lexer.TokenSeparatorGroup)
@@ -294,7 +345,7 @@ func (p *Parser) ParseImportStatement() (ImportStatementASTNode, error) {
 			return ImportStatementASTNode{}, err
 		}
 
-		path = append(path, tk.Characters())
+		path = append(path, tk.Characters)
 	}
 }
 
@@ -311,7 +362,7 @@ func (p *Parser) ParseStatement() (utils.Optional[Statement], error) {
 		return utils.NoneOptional[Statement](), nil
 	}
 
-	switch tk.Characters() {
+	switch tk.Characters {
 	case "import":
 		n, err := p.ParseImportStatement()
 
