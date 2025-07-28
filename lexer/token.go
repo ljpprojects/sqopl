@@ -7,60 +7,83 @@ import (
 	"ljpprojects.org/sqopl/utils"
 )
 
+// An alias for utils.Range[Position] primarily for specifying the locations of tokens and AST nodes.
 type Location utils.Range[Position]
 
+// Intialises a Location by casting the result of utils.InitRange(start, end)
 func InitLocation(start Position, end Position) Location {
 	return Location(utils.InitRange(start, end))
 }
 
+// An alias for []rune, but serves to separate characters into groups.
 type TokenGroup []rune
 
 var (
-	TokenOperatorGroup  TokenGroup = TokenGroup("~!^&*-+=|/.?<>%")
-	TokenSeparatorGroup TokenGroup = TokenGroup(";:,")
-	TokenGroupingGroup  TokenGroup = TokenGroup("([{}])")
+	// A TokenGroup with the characters making up operators.
+	TokenOperatorGroup TokenGroup = TokenGroup("~!^&*-+=|/.?<>%")
 
+	// A TokenGroup with the characters used to separate.
+	TokenSeparatorGroup TokenGroup = TokenGroup(";:,")
+
+	// A TokenGroup with the characters that group expressions or statements.
+	TokenGroupingGroup TokenGroup = TokenGroup("([{}])")
+
+	// A TokenGroup representing identifiers (but not containing the characters of them).
 	TokenIdentifierGroup TokenGroup = TokenGroup{}
-	TokenStringGroup     TokenGroup = TokenGroup{}
-	TokenIntegerGroup    TokenGroup = TokenGroup{}
-	TokenDecimalGroup    TokenGroup = TokenGroup{}
+
+	// A TokenGroup representing strings (but not containing the characters of them).
+	TokenStringGroup TokenGroup = TokenGroup{}
+
+	// A TokenGroup representing integers (but not containing the characters of them).
+	TokenIntegerGroup TokenGroup = TokenGroup{}
+
+	// A TokenGroup representing decimals (but not containing the characters of them).
+	//
+	// UNUSED
+	TokenDecimalGroup TokenGroup = TokenGroup{}
 )
 
+// A Token, which stores important information used to identify and locate it.
 type Token struct {
-	group      *TokenGroup
-	characters string
-	loc        Location
+	// A pointer to the group of the token.
+	Group *TokenGroup
+
+	// A string storing the characters of the token.
+	Characters string
+
+	// The location of the token in the source.
+	Loc Location
 }
 
-func (t Token) Characters() string {
-	return t.characters
-}
-
-func (t Token) Group() *TokenGroup {
-	return t.group
-}
-
+// A method that returns a Token's .Loc.Start
 func (t Token) Startpos() Position {
-	return t.loc.Start
+	return t.Loc.Start
 }
 
+// A method that returns a Token's .Loc.End
 func (t Token) Endpos() Position {
-	return t.loc.End
+	return t.Loc.End
 }
 
+// Formats the Token into a string for printing out.
 func (t Token) ToDisplayString() string {
 	return fmt.Sprintf(
 		"%s(%s) @ (%d:%d)-(%d:%d)",
-		t.group.ToDisplayString(),
-		t.characters,
-		t.loc.Start.line,
-		t.loc.Start.column,
-		t.loc.End.line,
-		t.loc.End.column,
+		t.Group.ToDisplayString(),
+		t.Characters,
+		t.Loc.Start.Line,
+		t.Loc.Start.Column,
+		t.Loc.End.Line,
+		t.Loc.End.Column,
 	)
 }
 
+// Formats a TokenGroup into a string for printing out.
 func (g *TokenGroup) ToDisplayString() string {
+	if g == nil {
+		return "Invalid"
+	}
+
 	if slices.Compare(*g, TokenOperatorGroup) == 0 {
 		return "Operators"
 	} else if slices.Compare(*g, TokenSeparatorGroup) == 0 {
@@ -80,10 +103,12 @@ func (g *TokenGroup) ToDisplayString() string {
 	}
 }
 
+// Creates a new token.
+// Equivalent to just using the structure initialisation syntax.
 func InitToken(group *TokenGroup, characters string, loc Location) Token {
 	return Token{
-		group,
-		characters,
-		loc,
+		Group:      group,
+		Characters: characters,
+		Loc:        loc,
 	}
 }

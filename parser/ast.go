@@ -5,85 +5,234 @@ import (
 	"ljpprojects.org/sqopl/utils"
 )
 
+// An enum representing the different kinds of AST nodes.
 type ASTNodeKind uint8
 
 const (
+	// The AST node kind representing the import statement.
 	ImportStatementASTNodeKind ASTNodeKind = iota
+
+	// The AST node kind representing the compile-time-constant definition
 	ConstDefinitionASTNodeKind
+
+	// The AST node kind representing the mutable variable definition.
 	VarDefinitionASTNodeKind
+
+	// The AST node kind representing the immutable variable definition.
 	LetDefinitionASTNodeKind
+
+	// The AST node kind representing the identifier literal.
 	IdentifierLiteralASTNodeKind
+
+	// The AST node kind representing the binary expression.
 	BinaryExpressionASTNodeKind
+
+	// The AST node kind representing the postfix unary expression.
 	PostfixUnaryExpressionASTNodeKind
+
+	// The AST node kind representing the prefix unary expression.
 	PrefixUnaryExpressionASTNodeKind
+
+	// The AST node kind representing the structure definition.
 	StructureDefinitionASTNodeKind
+
+	// The AST node kind representing the class definition.
 	ClassDefinitionASTNodeKind
+
+	// The AST node kind representing the function definition.
 	FunctionDefinitionASTNodeKind
+
+	// The AST node kind representing the method definition.
 	MethodDefinitionASTNodeKind
+
+	// The AST node kind representing the operator definition.
 	OperatorOverloadASTNodeKind
+
+	// The AST node kind representing the assignment statement.
 	AssignmentStatementASTNodeKind
+
+	// The AST node kind representing the structure initialisation expression.
 	StructureInitilisationExpressionASTNodeKind
+
+	// The AST node kind representing the structure allocation (structure reference initialisation) expression.
 	StructureRefInitilisationExpressionASTNodeKind
+
+	// The AST node kind representing the implicit return statement.
 	ImplicitReturnASTNodeKind
+
+	// The AST node kind representing the explicit return statement.
 	ExplicitReturnASTNodeKind
+
+	// The AST node kind representing the function call expression.
 	FunctionCallExpressionASTNodeKind
+
+	// The AST node kind representing the method call expression.
 	MethodCallExpressionASTNodeKind
+
+	// The AST node kind representing the member expression.
 	MemberExpressionASTNodeKind
+
+	// The AST node kind representing the module path expression.
 	ModulePathASTNodeKind
+
+	// The AST node kind representing the lambda expression.
 	LambdaExpressionASTNodeKind
+
+	// The AST node kind representing the if expression (an if with an else clause).
 	IfExpressionASTNodeKind
+
+	// The AST node kind representing the if statement (an if with no else clause).
 	IfStatementASTNodeKind
+
+	// The AST node kind representing the switch statement.
 	SwitchStatementASTNodeKind
+
+	// The AST node kind representing the match expression.
 	MatchExpressionASTNodeKind
+
+	// The AST node kind representing the when expression.
 	WhenExpressionASTNodeKind
+
+	// The AST node kind representing the interface definition.
 	InterfaceDefinitionASTNodeKind
+
+	// The AST node kind representing the string literal.
 	StringLiteralASTNodeKind
+
+	// The AST node kind representing the array literal.
 	ArrayLiteralASTNodeKind
+
+	// The AST node kind representing the integer literal.
 	IntegerLiteralASTNodeKind
+
+	// The AST node kind representing the decimal literal.
 	DecimalLiteralASTNodeKind
+
+	// The AST node kind representing the C-style enum definition.
 	CStyleEnumDefinitionASTNodeKind
+
+	// The AST node kind representing the sum type (enum) definition.
 	SumTypeEnumDefinitionASTNodeKind
+
+	// The AST node kind representing the namespace definition.
 	NamespaceDefinitionASTNodeKind
+
+	// The AST node kind representing the external function declaration.
 	ExternalFnDeclarationASTNodeKind
+
+	// The AST node kind representing the C-style for loop (the for loop form with the definition, condition, and incrementor statements) statement.
 	CStyleForLoopStatementASTNodeKind
+
+	// The AST node kind representing the for-in (the iterative for loop) statement.
 	ForInLoopStatementASTNodeKind
+
+	// The AST node kind representing the while loop statement.
 	WhileLoopStatementASTNodeKind
+
+	// The AST node kind representing the infinite loop statement.
 	ForeverLoopStatementASTNodeKind
+
+	// The AST node kind representing the ternary expression.
 	TernaryExpressionASTNodeKind
+
+	// The AST node kind representing the optional chaining expression.
 	OptionalChainingASTNodeKind
+
+	// The AST node kind representing the is-type-castable-to query expression.
 	TypeCastableQueryExpressionASTNodeKind
+
+	// The AST node kind representing the type cast expression.
 	TypeCastExpressionASTNodeKind
+
+	// The AST node kind representing the at-runtime type cast expression.
 	RuntimeTypeCastExpressionASTNodeKind
+
+	// The AST node kind representing the internal macro declaration.
 	InternalMacroDeclarationASTNodeKind
+
+	// The AST node kind representing the custom macro definition.
 	CustomMacroDefinitionASTNodeKind
+
+	// The AST node kind representing the macro usage meta-node.
 	MacroUsageASTNodeKind
+
+	// The AST node kind representing the macro variable usage meta-node.
 	MacroVariableUsageASTNodeKind
+
+	// The AST node kind representing the block expression.
 	BlockASTNodeKind
+
+	// The AST node kind representing the tuple destructuring segment-node.
 	TupleDestructuringASTNodeKind
+
+	// The AST node kind representing the array (of known length) destructuring segment-node.
 	ArrayCompTimeDestructuringASTNodeKind
+
+	// The AST node kind representing the array (of unknown length) destructuring segment-node.
 	ArrayRuntimeDestructuringASTNodeKind
+
+	// The AST node kind representing the structure/class destructuring segment-node.
 	StructOrClassDestructuringASTNodeKind
+
+	// The AST node kind representing the reference destructuring segment-node.
 	ReferenceDestructuringASTNodeKind
+
+	// The AST node kind representing the constraint segment-node.
 	ConstraintASTNodeKind
+
+	// The AST node kind representing the if-let statement (an if-let with no else clause).
 	IfLetStatementASTNodeKind
+
+	// The AST node kind representing the if-var statement (an if-var with no else clause).
 	IfVarStatementASTNodeKind
+
+	// The AST node kind representing the if-let expression (an if-let with an else clause).
 	IfLetExpressionASTNodeKind
+
+	// The AST node kind representing the if-var expression (an if-var with an else clause).
 	IfVarExpressionASTNodeKind
+
+	// The AST node kind representing the null coalesce expression.
 	NullCoalesceExpressionASTNodeKind
+
+	// The AST node kind representing the buuble value to return expression.
 	BubbleValueToReturnASTNodeKind
+
+	// The AST node kind representing the mutable reference type.
 	MutableReferenceTypeASTNodeKind
+
+	// The AST node kind representing the immutable reference type.
 	ImmutableReferenceTypeASTNodeKind
+
+	// The AST node kind representing the raw pointer type.
 	RawPointerTypeASTNodeKind
+
+	// The AST node kind representing the named type.
 	NamedTypeASTNodeKind
+
+	// The AST node kind representing the untagged union type.
 	UntaggedUnionTypeASTNodeKind
+
+	// The AST node kind representing the never (!) type.
 	NeverTypeASTNodeKind
+
+	// The AST node kind representing the table type.
 	TableTypeASTNodeKind
+
+	// The AST node kind representing the array (fixed length) type.
 	ArrayTypeASTNodeKind
+
+	// The AST node kind representing the slice (dynamic-length array, a reference) type.
 	SliceTypeASTNodeKind
+
+	// The AST node kind representing the tuple type.
 	TupleTypeASTNodeKind
+
+	// The AST node kind representing the computed variable definition.
 	ComputedVarDefinitionASTNodeKind
 )
 
+// Formats an ASTNodeKind into a string for printing out.
 func (k ASTNodeKind) ToDisplayString() string {
 	switch k {
 	case ImportStatementASTNodeKind:
@@ -239,9 +388,11 @@ func (k ASTNodeKind) ToDisplayString() string {
 	return "Unknown"
 }
 
+// Identical to lexer.TokenGroup, just with ASTNodeKinds.
 type ASTNodeGroup []ASTNodeKind
 
 var (
+	// The AST node group containing all type nodes.
 	TypeASTNodeGroup ASTNodeGroup = ASTNodeGroup{
 		MutableReferenceTypeASTNodeKind,
 		ImmutableReferenceTypeASTNodeKind,
@@ -255,11 +406,13 @@ var (
 		TupleTypeASTNodeKind,
 	}
 
+	// The AST node group containing all meta nodes.
 	MetaASTNodeGroup ASTNodeGroup = ASTNodeGroup{
 		MacroUsageASTNodeKind,
 		MacroVariableUsageASTNodeKind,
 	}
 
+	// The AST node group containing all segment nodes.
 	SegmentASTNodeGroup ASTNodeGroup = ASTNodeGroup{
 		TupleDestructuringASTNodeKind,
 		ArrayCompTimeDestructuringASTNodeKind,
@@ -270,6 +423,7 @@ var (
 		BlockASTNodeKind,
 	}
 
+	// The AST node group containing all statement nodes.
 	StatementASTNodeGroup ASTNodeGroup = ASTNodeGroup{
 		ImportStatementASTNodeKind,
 		AssignmentStatementASTNodeKind,
@@ -285,6 +439,7 @@ var (
 		IfVarStatementASTNodeKind,
 	}
 
+	// The AST node group containing all definition nodes.
 	DefinitionASTNodeGroup ASTNodeGroup = ASTNodeGroup{
 		ConstDefinitionASTNodeKind,
 		VarDefinitionASTNodeKind,
@@ -302,11 +457,13 @@ var (
 		ComputedVarDefinitionASTNodeKind,
 	}
 
+	// The AST node group containing all declaration nodes.
 	DeclarationASTNodeGroup ASTNodeGroup = ASTNodeGroup{
 		ExternalFnDeclarationASTNodeKind,
 		InternalMacroDeclarationASTNodeKind,
 	}
 
+	// The AST node group containing all literal nodes.
 	LiteralASTNodeGroup ASTNodeGroup = ASTNodeGroup{
 		StringLiteralASTNodeKind,
 		ArrayLiteralASTNodeKind,
@@ -315,6 +472,7 @@ var (
 		IdentifierLiteralASTNodeKind,
 	}
 
+	// The AST node group containing all expression nodes.
 	ExpressionASTNodeGroup ASTNodeGroup = ASTNodeGroup{
 		BinaryExpressionASTNodeKind,
 		PostfixUnaryExpressionASTNodeKind,
@@ -342,6 +500,8 @@ var (
 	}
 )
 
+// The interface which all valid AST nodes inheret from.
+// The inheritance tree for quite a few nodes is relatively long.
 type ASTNode interface {
 	Location() lexer.Location
 	Group() ASTNodeGroup
@@ -425,18 +585,21 @@ type (
 		Mutable() bool
 		Escaping() bool
 		InnerType() Type
+		IsDyn() bool
 	}
 
 	MutableReference struct {
 		Loc        lexer.Location
 		IsEscaping bool
 		Inner      Type
+		IsDynamic  bool
 	}
 
 	ImmutableReference struct {
 		Loc        lexer.Location
 		IsEscaping bool
 		Inner      Type
+		IsDynamic  bool
 	}
 
 	SliceTypeASTNode struct {
@@ -447,8 +610,9 @@ type (
 	}
 
 	RawPointer struct {
-		Loc   lexer.Location
-		Inner Type
+		Loc       lexer.Location
+		Inner     Type
+		IsDynamic bool
 	}
 
 	NamedTypeASTNode struct {
@@ -511,6 +675,11 @@ func (ptr RawPointer) InnerType() Type         { return ptr.Inner }
 func (ref MutableReference) InnerType() Type   { return ref.Inner }
 func (slc SliceTypeASTNode) InnerType() Type   { return slc.ValueType }
 func (ref ImmutableReference) InnerType() Type { return ref.Inner }
+
+func (ptr RawPointer) IsDyn() bool         { return ptr.IsDynamic }
+func (ref MutableReference) IsDyn() bool   { return ref.IsDynamic }
+func (slc SliceTypeASTNode) IsDyn() bool   { return false }
+func (ref ImmutableReference) IsDyn() bool { return ref.IsDynamic }
 
 func (ptr RawPointer) Location() lexer.Location               { return ptr.Loc }
 func (ref MutableReference) Location() lexer.Location         { return ref.Loc }
