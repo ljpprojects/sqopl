@@ -581,7 +581,7 @@ func (l *Lexer) NextToken() (utils.Optional[Token], error) {
 	}
 
 	// Check if `r` is a valid identifier start
-	// If you know what the number lexing code does, you know what this code does.
+	// Again, this is almost identical to the number parsing code.
 	if IsValidIdentStart(r) {
 		ident := string(r)
 

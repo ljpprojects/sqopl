@@ -2,6 +2,7 @@ package parser
 
 import (
 	"fmt"
+	"log"
 	"maps"
 	"os"
 	"slices"
@@ -302,6 +303,8 @@ func (p *Parser) ParseFnDefinition() (FunctionDefinitionASTNode, error) {
 
 	name := nametk.Characters
 
+	log.Printf("fn %s(...) ...\n", name)
+
 	arglist := map[string]Type{}
 
 	// Parse arglist
@@ -336,6 +339,8 @@ func (p *Parser) ParseFnDefinition() (FunctionDefinitionASTNode, error) {
 			return FunctionDefinitionASTNode{}, nil
 		}
 
+		log.Printf("fn %s(%s %s) ...\n", name, argname, argtype.Kind().ToDisplayString())
+
 		arglist[argname] = argtype
 
 		mnexttk, err = p.PeekToken()
@@ -355,13 +360,13 @@ func (p *Parser) ParseFnDefinition() (FunctionDefinitionASTNode, error) {
 		p.NextToken()
 	}
 
+	if _, err := p.ExpectCharacter(')', &lexer.TokenGroupingGroup); err != nil {
+		return FunctionDefinitionASTNode{}, err
+	}
+
 	rettype, err := p.ParseType()
 	if err != nil {
 		return FunctionDefinitionASTNode{}, nil
-	}
-
-	if _, err := p.ExpectCharacter(')', &lexer.TokenGroupingGroup); err != nil {
-		return FunctionDefinitionASTNode{}, err
 	}
 
 	body, err := p.ParseBlock()
@@ -371,14 +376,18 @@ func (p *Parser) ParseFnDefinition() (FunctionDefinitionASTNode, error) {
 
 	// TODO: generics
 
-	return FunctionDefinitionASTNode{
+	ret := FunctionDefinitionASTNode{
 		Loc:        lexer.InitLocation(startpos, p.lexer.CurrentPos()),
 		Name:       name,
 		ReturnType: rettype,
 		Parameters: arglist,
 		Generics:   map[string]TypeGenericASTNode{},
 		Body:       body,
-	}, nil
+	}
+
+	log.Printf("fn %s(...) ...\n", ret.Name)
+
+	return ret, nil
 }
 
 func (p *Parser) ParseImportStatement() (ImportStatementASTNode, error) {
@@ -452,6 +461,10 @@ func (p *Parser) ParseStatement() (utils.Optional[Statement], error) {
 	}
 
 	return utils.NoneOptional[Statement](), fmt.Errorf("Canot parse this node (it is either not supported or invalid) beginning with token %s", tk.ToDisplayString())
+}
+
+func (p *Parser) ParseLiteral() (Identifier, error) {
+	return IdentifierLiteralASTNode{}, nil
 }
 
 func (p *Parser) ParseBlock() (BlockASTNode, error) {

@@ -121,6 +121,25 @@ func main() {
 	lexer := lexer.NewLexer(file)
 	parser := parser.NewParser(lexer)
 
+	if lclone, err := lexer.Clone(); err == nil {
+		mtk, tkerr := lclone.NextToken()
+
+		for {
+			if tkerr != nil {
+				break
+			}
+
+			tk, err := mtk.Value()
+			if err != nil {
+				break
+			}
+
+			log.Printf("%s\n", tk.ToDisplayString())
+
+			mtk, tkerr = lclone.NextToken()
+		}
+	}
+
 	for {
 		log.Println("Parsing statement.")
 

@@ -501,84 +501,115 @@ var (
 )
 
 // The interface which all valid AST nodes inheret from.
-// The inheritance tree for quite a few nodes is relatively long.
 type ASTNode interface {
+	// Gets the lexer.Location (alias for utils.Range[lexer.Position]) of the ASTNode
 	Location() lexer.Location
+
+	// Gets the group the ASTNode belongs to.
 	Group() ASTNodeGroup
+
+	// Gets the kind of ASTNode.
+	// The ASTNodeKind is guarenteed to be unique for different kinds of ASTNodes.
 	Kind() ASTNodeKind
 }
 
+// The interface which all statements inherit from.
 type Statement interface {
 	ASTNode
 
+	// Stub to make compiler interpret this as a different ASTNode
 	statementNode()
 }
 
+// The interface which all declarations and definitions (they are different in SQOPL) inherit from.
 type Declaration interface {
 	Statement
 
+	// Stub to make compiler interpret this as a different ASTNode
 	declarationNode()
 }
 
+// The interface which all definitions inherit from.
 type Definition interface {
 	Declaration
 
+	// Stub to make compiler interpret this as a different ASTNode
 	definitionNode()
 }
 
+// The interface which all 'meta' nodes (e.g. macros) inherit from.
 type Meta interface {
 	ASTNode
 
+	// Stub to make compiler interpret this as a different ASTNode
 	metaNode()
 }
 
+// The interface which all ecpressions inherit from.
+// Expressions are a specialised subset of statements that return values.
 type Expression interface {
 	Statement
 
+	// Stub to make compiler interpret this as a different ASTNode
 	expressionNode()
 }
 
+// The interface which all literals inherit from.
 type Literal interface {
 	Expression
 
+	// Stub to make compiler interpret this as a different ASTNode
 	literalNode()
 }
 
+// The interface which all identifiers inherit from.
+// An identifier is any literal that can identify data, not just the raw literal.
 type Identifier interface {
 	Literal
 
+	// Stub to make compiler interpret this as a different ASTNode
 	identifierNode()
 }
 
+// The interface which all components of other ASTNodes inherit from.
 type Component interface {
 	ASTNode
 
+	// Stub to make compiler interpret this as a different ASTNode
 	componentNode()
 }
 
+// The interface which all destructuring components inherit from.
 type Destructure interface {
 	Component
 
+	// Stub to make compiler interpret this as a different ASTNode
 	destructureNode()
 }
 
+// The interface which all constraint components inherit from.
 type Constraint interface {
 	Component
 
+	// Stub to make compiler interpret this as a different ASTNode
 	constraintNode()
 }
 
+// The interface which all types inherit from.
 type Type interface {
 	ASTNode
 
+	// Stub to make compiler interpret this as a different ASTNode
 	typeNode()
 }
 
 type (
+	// A component used in declarations/types to specify compile-time generics.
 	TypeGenericASTNode struct {
 		ConformsTo []NamedTypeASTNode
 	}
 
+	// The interface which all reference types inherit from.
 	RefType interface {
 		Type
 
@@ -588,6 +619,7 @@ type (
 		IsDyn() bool
 	}
 
+	// The mutable reference type.
 	MutableReference struct {
 		Loc        lexer.Location
 		IsEscaping bool
@@ -595,6 +627,7 @@ type (
 		IsDynamic  bool
 	}
 
+	// The immutable reference type.
 	ImmutableReference struct {
 		Loc        lexer.Location
 		IsEscaping bool
@@ -602,6 +635,8 @@ type (
 		IsDynamic  bool
 	}
 
+	// The slice reference type.
+	// The only reference type that cannot be dynamic.
 	SliceTypeASTNode struct {
 		Loc        lexer.Location
 		ValueType  Type
@@ -609,27 +644,33 @@ type (
 		IsEscaping bool
 	}
 
+	// The raw pointer type.
 	RawPointer struct {
 		Loc       lexer.Location
 		Inner     Type
 		IsDynamic bool
 	}
 
+	// Any type represented with an identifier.
+	// Types as parts of modules are mangled.
 	NamedTypeASTNode struct {
 		Loc      lexer.Location
 		Name     string
 		Generics map[string]TypeGenericASTNode
 	}
 
+	// The untagged union type.
 	UntaggedUnionTypeASTNode struct {
 		Loc   lexer.Location
 		Types []Type
 	}
 
+	// The never type, which is primarily returned by functions which never return.
 	NeverTypeASTNode struct {
 		Loc lexer.Location
 	}
 
+	// The table type.
 	TableTypeASTNode struct {
 		Loc lexer.Location
 
@@ -637,6 +678,7 @@ type (
 		ValueType Type
 	}
 
+	// The array type. Unlike a slice, this is not a reference type because it cannot grow or shrink.
 	ArrayTypeASTNode struct {
 		Loc lexer.Location
 
@@ -644,6 +686,8 @@ type (
 		Length    uint64
 	}
 
+	// The tuple type.
+	// Although identical to the untagged union in structure, all elements specified in ValueTypes are present, not just one.
 	TupleTypeASTNode struct {
 		Loc        lexer.Location
 		ValueTypes []Type
