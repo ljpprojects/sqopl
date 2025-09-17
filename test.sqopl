@@ -1,6 +1,16 @@
 import std:io;
 import std:math;
 
-fn Main(args const[] string) Integer32 {
+fn foo(n i64) void {
+    # Uninitialised vars
+    var x i32;
 
+    # Variables initialised to basic expressions
+    var nice i32 = 0b1000101;
+    var letters String = "abcdefghijklmnopqrstuvwxyz";
+    let constant i32 = 0xCAFEBABE;
+
+    # Explicit return
+
+    return;
 }

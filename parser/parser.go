@@ -6,21 +6,80 @@ import (
 	"maps"
 	"os"
 	"slices"
+	"strconv"
 
 	"ljpprojects.org/sqopl/lexer"
 	"ljpprojects.org/sqopl/utils"
 )
 
-type Parser struct {
-	lexer *lexer.Lexer
+type ParserContext struct {
+	Parsing     utils.Optional[ASTNodeKind]
+	ErrorPrefix string
 }
 
-func NewParser(lexer *lexer.Lexer) *Parser {
+func DefaultParserContext() ParserContext {
+	return ParserContext{
+		Parsing:     utils.NoneOptional[ASTNodeKind](),
+		ErrorPrefix: "[DEBUG]",
+	}
+}
+
+func InitParserContext(error_prefix string) ParserContext {
+	return ParserContext{
+		Parsing:     utils.NoneOptional[ASTNodeKind](),
+		ErrorPrefix: error_prefix,
+	}
+}
+
+type Parser struct {
+	lexer   *lexer.Lexer
+	context ParserContext
+}
+
+func NewParser(lexer *lexer.Lexer, context ParserContext) *Parser {
 	p := new(Parser)
 
 	p.lexer = lexer
+	p.context = context
 
 	return p
+}
+
+func (p *Parser) SetPrefix(pref string) {
+	p.context.ErrorPrefix = pref
+}
+
+func (p *Parser) WithPrefixAs(pref string, do func(p *Parser) any) any {
+	old := p.context.ErrorPrefix
+	p.context.ErrorPrefix = pref
+
+	r := do(p)
+
+	p.context.ErrorPrefix = old
+
+	return r
+}
+
+func (p *Parser) DeclareParsing(kind ASTNodeKind) {
+	p.context.Parsing = utils.SomeOptional(kind)
+}
+
+func (p *Parser) IsParsingNodeOfKind(kind ASTNodeKind) bool {
+	k, err := p.context.Parsing.Value()
+	if err != nil {
+		return false
+	}
+
+	return k == kind
+}
+
+func (p *Parser) IsParsingNodeOfGroup(group *ASTNodeGroup) bool {
+	k, err := p.context.Parsing.Value()
+	if err != nil {
+		return false
+	}
+
+	return slices.Contains(*group, k)
 }
 
 func (p *Parser) NextToken() (utils.Optional[lexer.Token], error) {
@@ -43,12 +102,10 @@ func (p *Parser) ExpectCharacter(char rune, ofGroup *lexer.TokenGroup) (lexer.To
 	}
 
 	if slices.Compare(*ofGroup, *tk.Group) != 0 || char != []rune(tk.Characters)[0] {
-		return lexer.Token{}, ParseErrorExpectedCharacter{
-			Expected:      char,
-			ExpectedGroup: ofGroup,
-			Got:           []rune(tk.Characters)[0],
-			GotGroup:      tk.Group,
-		}
+		return lexer.Token{}, p.GenerateExpectedCharacterError(
+			lexer.InitToken(ofGroup, string(char), lexer.Location{}),
+			tk,
+		)
 	}
 
 	return tk, nil
@@ -66,10 +123,7 @@ func (p *Parser) ExpectToken(expect lexer.Token) (lexer.Token, error) {
 	}
 
 	if expect.Group != tk.Group || expect.Characters != tk.Characters {
-		return lexer.Token{}, ParseErrorExpectedToken{
-			Expected: expect,
-			Got:      tk,
-		}
+		return lexer.Token{}, p.GenerateExpectedTokenError(expect, tk)
 	}
 
 	return tk, nil
@@ -87,10 +141,7 @@ func (p *Parser) ExpectTokenOfGroup(expectGroup *lexer.TokenGroup) (lexer.Token,
 	}
 
 	if tk.Group != expectGroup {
-		return lexer.Token{}, ParseErrorExpectedToken{
-			Expected: lexer.InitToken(expectGroup, "[ANYTHING]", lexer.Location{}),
-			Got:      tk,
-		}
+		return lexer.Token{}, p.GenerateExpectedTokenError(lexer.InitToken(expectGroup, "ANYTHING", lexer.Location{}), tk)
 	}
 
 	return tk, nil
@@ -103,11 +154,10 @@ func (p *Parser) ExpectOneOfCharacters(expectOneOf map[rune]*lexer.TokenGroup) (
 			switch err := err.(type) {
 			case ParseErrorExpectedCharacter:
 				if !slices.Contains(slices.Collect(maps.Keys(expectOneOf)), err.Got) {
-					return lexer.Token{}, ParseErrorExpectedOneOfCharacters{
-						ExpectedOneOf: expectOneOf,
-						Got:           err.Got,
-						GotGroup:      err.GotGroup,
-					}
+					return lexer.Token{}, p.GenerateExpectedOneOfCharactersError(
+						expectOneOf,
+						lexer.InitToken(err.GotGroup, string(err.Got), lexer.Location{}),
+					)
 				} else {
 					continue
 				}
@@ -124,6 +174,8 @@ func (p *Parser) ExpectOneOfCharacters(expectOneOf map[rune]*lexer.TokenGroup) (
 }
 
 func (p *Parser) ParseNamedType() (NamedTypeASTNode, error) {
+	p.DeclareParsing(NamedTypeASTNodeKind)
+
 	tk, err := p.ExpectTokenOfGroup(&lexer.TokenIdentifierGroup)
 	if err != nil {
 		return NamedTypeASTNode{}, err
@@ -139,6 +191,8 @@ func (p *Parser) ParseNamedType() (NamedTypeASTNode, error) {
 }
 
 func (p *Parser) ParseReferenceType(isEscaping bool, isDyn bool, startpos lexer.Position) (ImmutableReference, error) {
+	p.DeclareParsing(ImmutableReferenceTypeASTNodeKind)
+
 	if _, err := p.ExpectCharacter('&', &lexer.TokenOperatorGroup); err != nil {
 		return ImmutableReference{}, err
 	}
@@ -158,6 +212,8 @@ func (p *Parser) ParseReferenceType(isEscaping bool, isDyn bool, startpos lexer.
 }
 
 func (p *Parser) ParseSliceType(isEscaping bool, startpos lexer.Position) (SliceTypeASTNode, error) {
+	p.DeclareParsing(SliceTypeASTNodeKind)
+
 	if _, err := p.ExpectCharacter('[', &lexer.TokenGroupingGroup); err != nil {
 		return SliceTypeASTNode{}, err
 	}
@@ -180,6 +236,8 @@ func (p *Parser) ParseSliceType(isEscaping bool, startpos lexer.Position) (Slice
 }
 
 func (p *Parser) ParseNeverType(startpos lexer.Position) (NeverTypeASTNode, error) {
+	p.DeclareParsing(NeverTypeASTNodeKind)
+
 	if _, err := p.ExpectCharacter('!', &lexer.TokenGroupingGroup); err != nil {
 		return NeverTypeASTNode{}, err
 	}
@@ -190,6 +248,8 @@ func (p *Parser) ParseNeverType(startpos lexer.Position) (NeverTypeASTNode, erro
 }
 
 func (p *Parser) ParseAndDetermineRefSubType(isEscaping bool, isDyn bool, startpos lexer.Position) (RefType, error) {
+	p.DeclareParsing(MutableReferenceTypeASTNodeKind)
+
 	if _, err := p.NextToken(); err != nil {
 		return nil, err
 	}
@@ -201,9 +261,7 @@ func (p *Parser) ParseAndDetermineRefSubType(isEscaping bool, isDyn bool, startp
 
 	tk, err := mtk.Value()
 	if err != nil {
-		return nil, ParseErrorUnexpectedEOF{
-			WhileParsing: ImmutableReferenceTypeASTNodeKind,
-		}
+		return nil, p.GenerateUnexpectedEOFError()
 	}
 
 	switch tk.Characters {
@@ -225,6 +283,8 @@ func (p *Parser) ParseAndDetermineRefSubType(isEscaping bool, isDyn bool, startp
 }
 
 func (p *Parser) ParseAndDertermineRefMutability(isEscaping bool, isDyn bool, startpos utils.Optional[lexer.Position]) (RefType, error) {
+	p.DeclareParsing(RawPointerTypeASTNodeKind)
+
 	mtk, err := p.PeekToken()
 	if err != nil {
 		return nil, err
@@ -232,9 +292,7 @@ func (p *Parser) ParseAndDertermineRefMutability(isEscaping bool, isDyn bool, st
 
 	tk, err := mtk.Value()
 	if err != nil {
-		return nil, ParseErrorUnexpectedEOF{
-			WhileParsing: ImmutableReferenceTypeASTNodeKind,
-		}
+		return nil, p.GenerateUnexpectedEOFError()
 	}
 
 	switch tk.Characters {
@@ -266,6 +324,8 @@ func (p *Parser) ParseAndDertermineRefMutability(isEscaping bool, isDyn bool, st
 }
 
 func (p *Parser) ParseType() (Type, error) {
+	p.DeclareParsing(NamedTypeASTNodeKind)
+
 	mtk, err := p.PeekToken()
 	if err != nil {
 		return nil, err
@@ -273,9 +333,7 @@ func (p *Parser) ParseType() (Type, error) {
 
 	tk, err := mtk.Value()
 	if err != nil {
-		return nil, ParseErrorUnexpectedEOF{
-			WhileParsing: ImmutableReferenceTypeASTNodeKind,
-		}
+		return nil, p.GenerateUnexpectedEOFError()
 	}
 
 	switch tk.Characters {
@@ -289,6 +347,8 @@ func (p *Parser) ParseType() (Type, error) {
 }
 
 func (p *Parser) ParseFnDefinition() (FunctionDefinitionASTNode, error) {
+	p.DeclareParsing(FunctionDefinitionASTNodeKind)
+
 	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "fn", lexer.Location{}))
 	if err != nil {
 		return FunctionDefinitionASTNode{}, err
@@ -390,7 +450,77 @@ func (p *Parser) ParseFnDefinition() (FunctionDefinitionASTNode, error) {
 	return ret, nil
 }
 
+func (p *Parser) ParsePaths(startpos lexer.Position, initial []string, separator rune) ([][]string, lexer.Location, error) {
+	p.DeclareParsing(ModulePathASTNodeKind)
+
+	rootpath := initial
+	fullpaths := [][]string{}
+
+	for {
+		_, err := p.ExpectCharacter(':', &lexer.TokenSeparatorGroup)
+		if err != nil {
+			switch err := err.(type) {
+			case ParseErrorExpectedCharacter:
+				if err.Got == ';' {
+					endpos := p.lexer.CurrentPos()
+
+					return [][]string{rootpath}, lexer.InitLocation(startpos, endpos), nil
+				}
+			default:
+				return [][]string{}, lexer.Location{}, err
+			}
+		}
+
+		tk, err := p.ExpectTokenOfGroup(&lexer.TokenIdentifierGroup)
+		if err != nil {
+			fmt.Printf("[WARN] %s\n", err.Error())
+
+			switch err := err.(type) {
+			case ParseErrorExpectedToken:
+				if err.Got.Characters == "{" { // Parse shorthand imports
+
+					// Just parse mutliple paths
+					for {
+						if mtk, err := p.lexer.PeekToken(); err == nil {
+							if tk, err := mtk.Value(); err == nil {
+								if tk.Characters == "}" {
+									break
+								} else if tk.Characters == "," {
+									p.lexer.NextToken()
+								}
+							} else {
+								return [][]string{}, lexer.Location{}, nil
+							}
+						} else {
+							log.Panicf("%s", err.Error())
+						}
+
+						subpaths, _, err := p.ParsePaths(startpos, rootpath, separator)
+						if err != nil {
+							return [][]string{}, lexer.Location{}, err
+						}
+
+						fullpaths = append(fullpaths, subpaths...)
+					}
+
+					if _, err := p.ExpectCharacter('}', &lexer.TokenGroupingGroup); err != nil {
+						return [][]string{}, lexer.Location{}, err
+					}
+
+					continue
+				}
+			default:
+				return [][]string{}, lexer.Location{}, err
+			}
+		}
+
+		rootpath = append(rootpath, tk.Characters)
+	}
+}
+
 func (p *Parser) ParseImportStatement() (ImportStatementASTNode, error) {
+	p.DeclareParsing(ImportStatementASTNodeKind)
+
 	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "import", lexer.Location{}))
 	if err != nil {
 		return ImportStatementASTNode{}, err
@@ -403,71 +533,268 @@ func (p *Parser) ParseImportStatement() (ImportStatementASTNode, error) {
 		return ImportStatementASTNode{}, err
 	}
 
-	path := []string{tk.Characters}
-
-	for {
-		_, err := p.ExpectCharacter(':', &lexer.TokenSeparatorGroup)
-		if err != nil {
-			switch err := err.(type) {
-			case ParseErrorExpectedCharacter:
-				if err.Got == ';' {
-					endpos := p.lexer.CurrentPos()
-
-					return ImportStatementASTNode{
-						Loc:  lexer.InitLocation(startpos, endpos),
-						Path: path,
-					}, nil
-				}
-			default:
-				return ImportStatementASTNode{}, err
-			}
-		}
-
-		tk, err = p.ExpectTokenOfGroup(&lexer.TokenIdentifierGroup)
-		if err != nil {
-			return ImportStatementASTNode{}, err
-		}
-
-		path = append(path, tk.Characters)
+	paths, loc, err := p.ParsePaths(startpos, []string{}, ':')
+	if err != nil {
+		return ImportStatementASTNode{}, err
 	}
+
+	return ImportStatementASTNode{
+		Loc:   loc,
+		Paths: paths,
+	}, nil
 }
 
-func (p *Parser) ParseStatement() (utils.Optional[Statement], error) {
+func (p *Parser) ParseExplciitReturnStatement() (ExplicitReturnASTNode, error) {
+	p.DeclareParsing(ExplicitReturnASTNodeKind)
+
+	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "return", lexer.Location{}))
+	if err != nil {
+		return ExplicitReturnASTNode{}, err
+	}
+
+	startpos := tk.Startpos()
+
+	// Handle void return case
+	if mtk, err := p.PeekToken(); err == nil {
+		if tk, err := mtk.Value(); err == nil {
+			if tk.Characters == ";" {
+				if _, err := p.ExpectToken(lexer.InitToken(&lexer.TokenSeparatorGroup, ";", lexer.Location{})); err != nil {
+					return ExplicitReturnASTNode{}, err
+				}
+
+				return ExplicitReturnASTNode{
+					Loc:   lexer.InitLocation(startpos, p.lexer.CurrentPos()),
+					Value: utils.NoneOptional[Expression](),
+				}, nil
+			}
+		}
+	}
+
+	val, err := p.ParseExpression()
+	if err != nil {
+		return ExplicitReturnASTNode{}, err
+	}
+
+	if _, err := p.ExpectCharacter(';', &lexer.TokenSeparatorGroup); err != nil {
+		return ExplicitReturnASTNode{}, err
+	}
+
+	return ExplicitReturnASTNode{
+		Loc:   lexer.InitLocation(startpos, p.lexer.CurrentPos()),
+		Value: utils.SomeOptional(val),
+	}, nil
+}
+
+func (p *Parser) ParseVarDefinition() (VarDefinitionASTNode, error) {
+	p.DeclareParsing(VarDefinitionASTNodeKind)
+
+	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "var", lexer.Location{}))
+	if err != nil {
+		return VarDefinitionASTNode{}, err
+	}
+
+	startpos := tk.Startpos()
+
+	nametk, err := p.ExpectTokenOfGroup(&lexer.TokenIdentifierGroup)
+	if err != nil {
+		return VarDefinitionASTNode{}, err
+	}
+
+	name := nametk.Characters
+
+	typ, err := p.ParseType()
+	if err != nil {
+		return VarDefinitionASTNode{}, err
+	}
+
+	if _, err := p.ExpectCharacter(';', &lexer.TokenSeparatorGroup); err == nil {
+		return VarDefinitionASTNode{
+			Loc:   lexer.InitLocation(startpos, p.lexer.CurrentPos()),
+			Name:  name,
+			Value: utils.NoneOptional[Expression](),
+			Type:  typ,
+		}, nil
+	} else {
+		switch err := err.(type) {
+		case ParseErrorExpectedCharacter:
+			if err.Got != '=' {
+				return VarDefinitionASTNode{}, err
+			}
+		default:
+			return VarDefinitionASTNode{}, err
+		}
+	}
+
+	val, err := p.ParseExpression()
+	if err != nil {
+		return VarDefinitionASTNode{}, err
+	}
+
+	if _, err := p.ExpectCharacter(';', &lexer.TokenSeparatorGroup); err != nil {
+		return VarDefinitionASTNode{}, err
+	}
+
+	return VarDefinitionASTNode{
+		Loc:   lexer.InitLocation(startpos, p.lexer.CurrentPos()),
+		Name:  name,
+		Value: utils.SomeOptional(val),
+		Type:  typ,
+	}, nil
+}
+
+func (p *Parser) ParseLetDefinition() (LetDefinitionASTNode, error) {
+	p.DeclareParsing(LetDefinitionASTNodeKind)
+
+	tk, err := p.ExpectToken(lexer.InitToken(&lexer.TokenIdentifierGroup, "let", lexer.Location{}))
+	if err != nil {
+		return LetDefinitionASTNode{}, err
+	}
+
+	startpos := tk.Startpos()
+
+	nametk, err := p.ExpectTokenOfGroup(&lexer.TokenIdentifierGroup)
+	if err != nil {
+		return LetDefinitionASTNode{}, err
+	}
+
+	name := nametk.Characters
+
+	typ, err := p.ParseType()
+	if err != nil {
+		return LetDefinitionASTNode{}, err
+	}
+
+	if _, err := p.ExpectCharacter('=', &lexer.TokenOperatorGroup); err != nil {
+		return LetDefinitionASTNode{}, err
+	}
+
+	val, err := p.ParseExpression()
+	if err != nil {
+		return LetDefinitionASTNode{}, err
+	}
+
+	if _, err := p.ExpectCharacter(';', &lexer.TokenSeparatorGroup); err != nil {
+		return LetDefinitionASTNode{}, err
+	}
+
+	return LetDefinitionASTNode{
+		Loc:   lexer.InitLocation(startpos, p.lexer.CurrentPos()),
+		Name:  name,
+		Value: val,
+		Type:  typ,
+	}, nil
+}
+
+func (p *Parser) ParseStatement() (Statement, error) {
+	p.DeclareParsing(BlockASTNodeKind)
+
 	mtk, err := p.PeekToken()
 	if err != nil {
-		return utils.NoneOptional[Statement](), err
+		return nil, err
 	}
 
 	tk, err := mtk.Value()
 	if err != nil {
-		return utils.NoneOptional[Statement](), nil
+		return nil, nil
 	}
 
 	switch tk.Characters {
 	case "import":
 		n, err := p.ParseImportStatement()
 		if err != nil {
-			return utils.NoneOptional[Statement](), err
+			return nil, err
 		}
 
-		return utils.SomeOptional(Statement(n)), nil
+		return n, nil
 	case "fn":
 		n, err := p.ParseFnDefinition()
 		if err != nil {
-			return utils.NoneOptional[Statement](), err
+			return nil, err
 		}
 
-		return utils.SomeOptional(Statement(n)), nil
+		return n, nil
+	case "return":
+		n, err := p.ParseExplciitReturnStatement()
+		if err != nil {
+			return nil, err
+		}
+
+		return n, nil
+	case "var":
+		n, err := p.ParseVarDefinition()
+		if err != nil {
+			return nil, err
+		}
+
+		return n, nil
+	case "let":
+		n, err := p.ParseLetDefinition()
+		if err != nil {
+			return nil, err
+		}
+
+		return n, nil
 	}
 
-	return utils.NoneOptional[Statement](), fmt.Errorf("Canot parse this node (it is either not supported or invalid) beginning with token %s", tk.ToDisplayString())
+	return p.ParseExpression()
 }
 
-func (p *Parser) ParseLiteral() (Identifier, error) {
-	return IdentifierLiteralASTNode{}, nil
+func (p *Parser) ParseExpression() (Expression, error) {
+	return p.ParsePrimaryExpression()
+}
+
+func (p *Parser) ParsePrimaryExpression() (Expression, error) {
+	return p.ParseLiteral()
+}
+
+func (p *Parser) ParseLiteral() (Literal, error) {
+	p.DeclareParsing(IdentifierLiteralASTNodeKind)
+
+	mtk, err := p.NextToken()
+	if err != nil {
+		return nil, err
+	}
+
+	tk, err := mtk.Value()
+	if err != nil {
+		return nil, p.GenerateUnexpectedEOFError()
+	}
+
+	startpos := tk.Startpos()
+
+	switch tk.Group {
+	case &lexer.TokenIdentifierGroup:
+		return IdentifierLiteralASTNode{
+			Loc:  lexer.InitLocation(startpos, p.lexer.CurrentPos()),
+			Name: tk.Characters,
+		}, nil
+	case &lexer.TokenStringGroup:
+		return StringLiteralASTNode{
+			Loc:    lexer.InitLocation(startpos, p.lexer.CurrentPos()),
+			String: tk.Characters,
+		}, nil
+	case &lexer.TokenIntegerGroup:
+		val, _ := strconv.ParseInt(tk.Characters, 10, 64)
+
+		return IntegerLiteralASTNode{
+			Loc:   lexer.InitLocation(startpos, p.lexer.CurrentPos()),
+			Value: val,
+		}, nil
+	case &lexer.TokenDecimalGroup:
+		val, _ := strconv.ParseFloat(tk.Characters, 64)
+
+		return DecimalLiteralASTNode{
+			Loc:   lexer.InitLocation(startpos, p.lexer.CurrentPos()),
+			Value: val,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("Canot parse this node (it is either not supported or invalid) beginning with token %s", tk.ToDisplayString())
 }
 
 func (p *Parser) ParseBlock() (BlockASTNode, error) {
+	p.DeclareParsing(BlockASTNodeKind)
+
 	startpos := p.lexer.CurrentPos()
 
 	if _, err := p.ExpectCharacter('{', &lexer.TokenGroupingGroup); err != nil {
@@ -491,16 +818,9 @@ func (p *Parser) ParseBlock() (BlockASTNode, error) {
 			break
 		}
 
-		mstmt, err := p.ParseStatement()
+		stmt, err := p.ParseStatement()
 		if err != nil {
 			return BlockASTNode{}, err
-		}
-
-		stmt, err := mstmt.Value()
-		if err != nil {
-			return BlockASTNode{}, ParseErrorUnexpectedEOF{
-				WhileParsing: BlockASTNodeKind,
-			}
 		}
 
 		nodes = append(nodes, stmt)

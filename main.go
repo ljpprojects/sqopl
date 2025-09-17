@@ -119,38 +119,16 @@ func main() {
 	defer file.Close()
 
 	lexer := lexer.NewLexer(file)
-	parser := parser.NewParser(lexer)
-
-	if lclone, err := lexer.Clone(); err == nil {
-		mtk, tkerr := lclone.NextToken()
-
-		for {
-			if tkerr != nil {
-				break
-			}
-
-			tk, err := mtk.Value()
-			if err != nil {
-				break
-			}
-
-			log.Printf("%s\n", tk.ToDisplayString())
-
-			mtk, tkerr = lclone.NextToken()
-		}
-	}
+	parser := parser.NewParser(lexer, parser.InitParserContext("TEST"))
 
 	for {
-		log.Println("Parsing statement.")
-
-		mnd, err := parser.ParseStatement()
+		nd, err := parser.ParseStatement()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Parse error: %v\n", err)
 			os.Exit(1)
 		}
 
-		nd, err := mnd.Value()
-		if err != nil {
+		if nd == nil {
 			break
 		}
 

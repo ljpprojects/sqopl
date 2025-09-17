@@ -3,7 +3,6 @@ package lexer
 import (
 	"bufio"
 	"io"
-	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -246,7 +245,7 @@ func (l *Lexer) NextToken() (utils.Optional[Token], error) {
 
 	// Skip past comments
 	case r == '#':
-		line, _, err := l.reader.ReadLine()
+		line, err := l.reader.ReadSlice('\n')
 		l.bytesRead += uint64(len(line))
 
 		if err != nil {
@@ -547,8 +546,6 @@ func (l *Lexer) NextToken() (utils.Optional[Token], error) {
 				if err != nil {
 					return utils.NoneOptional[Token](), err
 				}
-
-				log.Println(string(b))
 
 				if !IsValidNumberPart(rune(b[0]), Base16LexerNumericalBase) {
 					break

@@ -50,6 +50,14 @@ func (o Optional[T]) Value() (T, error) {
 	}
 }
 
+func (o Optional[T]) Unwrap() T {
+	if o.valuePresent {
+		return o.value
+	} else {
+		panic("Attempted to unwrap none optional.")
+	}
+}
+
 func OptionalMap[A any, B any](o Optional[A], f func(A) B) Optional[B] {
 	if o.valuePresent {
 		return SomeOptional(f(o.value))

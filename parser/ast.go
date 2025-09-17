@@ -506,7 +506,7 @@ type ASTNode interface {
 	Location() lexer.Location
 
 	// Gets the group the ASTNode belongs to.
-	Group() ASTNodeGroup
+	Group() *ASTNodeGroup
 
 	// Gets the kind of ASTNode.
 	// The ASTNodeKind is guarenteed to be unique for different kinds of ASTNodes.
@@ -747,42 +747,42 @@ func (typ ArrayTypeASTNode) Kind() ASTNodeKind         { return ArrayTypeASTNode
 func (typ SliceTypeASTNode) Kind() ASTNodeKind         { return SliceTypeASTNodeKind }
 func (typ TupleTypeASTNode) Kind() ASTNodeKind         { return TupleTypeASTNodeKind }
 
-func (ptr RawPointer) Group() ASTNodeGroup               { return TypeASTNodeGroup }
-func (ref MutableReference) Group() ASTNodeGroup         { return TypeASTNodeGroup }
-func (ref ImmutableReference) Group() ASTNodeGroup       { return TypeASTNodeGroup }
-func (typ NamedTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
-func (typ UntaggedUnionTypeASTNode) Group() ASTNodeGroup { return TypeASTNodeGroup }
-func (typ NeverTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
-func (typ TableTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
-func (typ ArrayTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
-func (typ SliceTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
-func (typ TupleTypeASTNode) Group() ASTNodeGroup         { return TypeASTNodeGroup }
+func (ptr RawPointer) Group() *ASTNodeGroup               { return &TypeASTNodeGroup }
+func (ref MutableReference) Group() *ASTNodeGroup         { return &TypeASTNodeGroup }
+func (ref ImmutableReference) Group() *ASTNodeGroup       { return &TypeASTNodeGroup }
+func (typ NamedTypeASTNode) Group() *ASTNodeGroup         { return &TypeASTNodeGroup }
+func (typ UntaggedUnionTypeASTNode) Group() *ASTNodeGroup { return &TypeASTNodeGroup }
+func (typ NeverTypeASTNode) Group() *ASTNodeGroup         { return &TypeASTNodeGroup }
+func (typ TableTypeASTNode) Group() *ASTNodeGroup         { return &TypeASTNodeGroup }
+func (typ ArrayTypeASTNode) Group() *ASTNodeGroup         { return &TypeASTNodeGroup }
+func (typ SliceTypeASTNode) Group() *ASTNodeGroup         { return &TypeASTNodeGroup }
+func (typ TupleTypeASTNode) Group() *ASTNodeGroup         { return &TypeASTNodeGroup }
 
 type (
 	ImportStatementASTNode struct {
-		Loc  lexer.Location
-		Path []string
+		Loc   lexer.Location
+		Paths [][]string
 	}
 
 	ConstDefinitionASTNode struct {
 		Loc   lexer.Location
 		Name  string
 		Value Expression
-		Type  utils.Optional[Type]
+		Type  Type
 	}
 
 	VarDefinitionASTNode struct {
 		Loc   lexer.Location
 		Name  string
-		Value Expression
-		Type  utils.Optional[Type]
+		Value utils.Optional[Expression]
+		Type  Type
 	}
 
 	LetDefinitionASTNode struct {
 		Loc   lexer.Location
 		Name  string
 		Value Expression
-		Type  utils.Optional[Type]
+		Type  Type
 	}
 
 	IdentifierLiteralASTNode struct {
@@ -906,7 +906,7 @@ type (
 
 	ExplicitReturnASTNode struct {
 		Loc   lexer.Location
-		Value Expression
+		Value utils.Optional[Expression]
 	}
 
 	FunctionCallExpressionASTNode struct {
@@ -1453,18 +1453,18 @@ func (node NullCoalesceExpressionASTNode) Kind() ASTNodeKind {
 }
 func (node BubbleValueToReturnASTNode) Kind() ASTNodeKind { return BubbleValueToReturnASTNodeKind }
 
-func (node ImportStatementASTNode) Group() ASTNodeGroup        { return StatementASTNodeGroup }
-func (node IfLetStatementASTNode) Group() ASTNodeGroup         { return StatementASTNodeGroup }
-func (node IfVarStatementASTNode) Group() ASTNodeGroup         { return StatementASTNodeGroup }
-func (node AssignmentStatementASTNode) Group() ASTNodeGroup    { return StatementASTNodeGroup }
-func (node ImplicitReturnASTNode) Group() ASTNodeGroup         { return StatementASTNodeGroup }
-func (node ExplicitReturnASTNode) Group() ASTNodeGroup         { return StatementASTNodeGroup }
-func (node IfStatementASTNode) Group() ASTNodeGroup            { return StatementASTNodeGroup }
-func (node SwitchStatementASTNode) Group() ASTNodeGroup        { return StatementASTNodeGroup }
-func (node CStyleForLoopStatementASTNode) Group() ASTNodeGroup { return StatementASTNodeGroup }
-func (node ForInLoopStatementASTNode) Group() ASTNodeGroup     { return StatementASTNodeGroup }
-func (node WhileLoopStatementASTNode) Group() ASTNodeGroup     { return StatementASTNodeGroup }
-func (node ForeverLoopStatementASTNode) Group() ASTNodeGroup   { return StatementASTNodeGroup }
+func (node ImportStatementASTNode) Group() *ASTNodeGroup        { return &StatementASTNodeGroup }
+func (node IfLetStatementASTNode) Group() *ASTNodeGroup         { return &StatementASTNodeGroup }
+func (node IfVarStatementASTNode) Group() *ASTNodeGroup         { return &StatementASTNodeGroup }
+func (node AssignmentStatementASTNode) Group() *ASTNodeGroup    { return &StatementASTNodeGroup }
+func (node ImplicitReturnASTNode) Group() *ASTNodeGroup         { return &StatementASTNodeGroup }
+func (node ExplicitReturnASTNode) Group() *ASTNodeGroup         { return &StatementASTNodeGroup }
+func (node IfStatementASTNode) Group() *ASTNodeGroup            { return &StatementASTNodeGroup }
+func (node SwitchStatementASTNode) Group() *ASTNodeGroup        { return &StatementASTNodeGroup }
+func (node CStyleForLoopStatementASTNode) Group() *ASTNodeGroup { return &StatementASTNodeGroup }
+func (node ForInLoopStatementASTNode) Group() *ASTNodeGroup     { return &StatementASTNodeGroup }
+func (node WhileLoopStatementASTNode) Group() *ASTNodeGroup     { return &StatementASTNodeGroup }
+func (node ForeverLoopStatementASTNode) Group() *ASTNodeGroup   { return &StatementASTNodeGroup }
 
 func (node ImportStatementASTNode) statementNode()        {}
 func (node IfLetStatementASTNode) statementNode()         {}
@@ -1479,18 +1479,18 @@ func (node ForInLoopStatementASTNode) statementNode()     {}
 func (node WhileLoopStatementASTNode) statementNode()     {}
 func (node ForeverLoopStatementASTNode) statementNode()   {}
 
-func (node ConstDefinitionASTNode) Group() ASTNodeGroup       { return DefinitionASTNodeGroup }
-func (node VarDefinitionASTNode) Group() ASTNodeGroup         { return DefinitionASTNodeGroup }
-func (node LetDefinitionASTNode) Group() ASTNodeGroup         { return DefinitionASTNodeGroup }
-func (node StructureDefinitionASTNode) Group() ASTNodeGroup   { return DefinitionASTNodeGroup }
-func (node ClassDefinitionASTNode) Group() ASTNodeGroup       { return DefinitionASTNodeGroup }
-func (node FunctionDefinitionASTNode) Group() ASTNodeGroup    { return DefinitionASTNodeGroup }
-func (node MethodDefinitionASTNode) Group() ASTNodeGroup      { return DefinitionASTNodeGroup }
-func (node OperatorOverloadASTNode) Group() ASTNodeGroup      { return DefinitionASTNodeGroup }
-func (node InterfaceDefinitionASTNode) Group() ASTNodeGroup   { return DefinitionASTNodeGroup }
-func (node CStyleEnumDefinitionASTNode) Group() ASTNodeGroup  { return DefinitionASTNodeGroup }
-func (node SumTypeEnumDefinitionASTNode) Group() ASTNodeGroup { return DefinitionASTNodeGroup }
-func (node NamespaceDefinitionASTNode) Group() ASTNodeGroup   { return DefinitionASTNodeGroup }
+func (node ConstDefinitionASTNode) Group() *ASTNodeGroup       { return &DefinitionASTNodeGroup }
+func (node VarDefinitionASTNode) Group() *ASTNodeGroup         { return &DefinitionASTNodeGroup }
+func (node LetDefinitionASTNode) Group() *ASTNodeGroup         { return &DefinitionASTNodeGroup }
+func (node StructureDefinitionASTNode) Group() *ASTNodeGroup   { return &DefinitionASTNodeGroup }
+func (node ClassDefinitionASTNode) Group() *ASTNodeGroup       { return &DefinitionASTNodeGroup }
+func (node FunctionDefinitionASTNode) Group() *ASTNodeGroup    { return &DefinitionASTNodeGroup }
+func (node MethodDefinitionASTNode) Group() *ASTNodeGroup      { return &DefinitionASTNodeGroup }
+func (node OperatorOverloadASTNode) Group() *ASTNodeGroup      { return &DefinitionASTNodeGroup }
+func (node InterfaceDefinitionASTNode) Group() *ASTNodeGroup   { return &DefinitionASTNodeGroup }
+func (node CStyleEnumDefinitionASTNode) Group() *ASTNodeGroup  { return &DefinitionASTNodeGroup }
+func (node SumTypeEnumDefinitionASTNode) Group() *ASTNodeGroup { return &DefinitionASTNodeGroup }
+func (node NamespaceDefinitionASTNode) Group() *ASTNodeGroup   { return &DefinitionASTNodeGroup }
 
 func (node ConstDefinitionASTNode) statementNode()         {}
 func (node VarDefinitionASTNode) statementNode()           {}
@@ -1529,11 +1529,11 @@ func (node CStyleEnumDefinitionASTNode) definitionNode()   {}
 func (node SumTypeEnumDefinitionASTNode) definitionNode()  {}
 func (node NamespaceDefinitionASTNode) definitionNode()    {}
 
-func (node StringLiteralASTNode) Group() ASTNodeGroup     { return LiteralASTNodeGroup }
-func (node ArrayLiteralASTNode) Group() ASTNodeGroup      { return LiteralASTNodeGroup }
-func (node IntegerLiteralASTNode) Group() ASTNodeGroup    { return LiteralASTNodeGroup }
-func (node DecimalLiteralASTNode) Group() ASTNodeGroup    { return LiteralASTNodeGroup }
-func (node IdentifierLiteralASTNode) Group() ASTNodeGroup { return LiteralASTNodeGroup }
+func (node StringLiteralASTNode) Group() *ASTNodeGroup     { return &LiteralASTNodeGroup }
+func (node ArrayLiteralASTNode) Group() *ASTNodeGroup      { return &LiteralASTNodeGroup }
+func (node IntegerLiteralASTNode) Group() *ASTNodeGroup    { return &LiteralASTNodeGroup }
+func (node DecimalLiteralASTNode) Group() *ASTNodeGroup    { return &LiteralASTNodeGroup }
+func (node IdentifierLiteralASTNode) Group() *ASTNodeGroup { return &LiteralASTNodeGroup }
 
 func (node StringLiteralASTNode) statementNode()      {}
 func (node ArrayLiteralASTNode) statementNode()       {}
@@ -1551,17 +1551,21 @@ func (node IntegerLiteralASTNode) literalNode()       {}
 func (node DecimalLiteralASTNode) literalNode()       {}
 func (node IdentifierLiteralASTNode) literalNode()    {}
 
-func (node ExternalFnDeclarationASTNode) Group() ASTNodeGroup { return DeclarationASTNodeGroup }
-func (node ExternalFnDeclarationASTNode) statementNode()      {}
-func (node ExternalFnDeclarationASTNode) declarationNode()    {}
+func (node IdentifierLiteralASTNode) identifierNode() {}
+func (node MemberExpressionASTNode) identifierNode()  {}
+func (node ModulePathASTNode) identifierNode()        {}
 
-func (node BlockASTNode) Group() ASTNodeGroup                      { return SegmentASTNodeGroup }
-func (node TupleDestructuringASTNode) Group() ASTNodeGroup         { return SegmentASTNodeGroup }
-func (node ArrayCompTimeDestructuringASTNode) Group() ASTNodeGroup { return SegmentASTNodeGroup }
-func (node ArrayRuntimeDestructuringASTNode) Group() ASTNodeGroup  { return SegmentASTNodeGroup }
-func (node StructOrClassDestructuringASTNode) Group() ASTNodeGroup { return SegmentASTNodeGroup }
-func (node ReferenceDestructuringASTNode) Group() ASTNodeGroup     { return SegmentASTNodeGroup }
-func (node ConstraintASTNode) Group() ASTNodeGroup                 { return SegmentASTNodeGroup }
+func (node ExternalFnDeclarationASTNode) Group() *ASTNodeGroup { return &DeclarationASTNodeGroup }
+func (node ExternalFnDeclarationASTNode) statementNode()       {}
+func (node ExternalFnDeclarationASTNode) declarationNode()     {}
+
+func (node BlockASTNode) Group() *ASTNodeGroup                      { return &SegmentASTNodeGroup }
+func (node TupleDestructuringASTNode) Group() *ASTNodeGroup         { return &SegmentASTNodeGroup }
+func (node ArrayCompTimeDestructuringASTNode) Group() *ASTNodeGroup { return &SegmentASTNodeGroup }
+func (node ArrayRuntimeDestructuringASTNode) Group() *ASTNodeGroup  { return &SegmentASTNodeGroup }
+func (node StructOrClassDestructuringASTNode) Group() *ASTNodeGroup { return &SegmentASTNodeGroup }
+func (node ReferenceDestructuringASTNode) Group() *ASTNodeGroup     { return &SegmentASTNodeGroup }
+func (node ConstraintASTNode) Group() *ASTNodeGroup                 { return &SegmentASTNodeGroup }
 
 func (node BlockASTNode) componentNode()                      {}
 func (node TupleDestructuringASTNode) componentNode()         {}
@@ -1571,31 +1575,31 @@ func (node StructOrClassDestructuringASTNode) componentNode() {}
 func (node ReferenceDestructuringASTNode) componentNode()     {}
 func (node ConstraintASTNode) componentNode()                 {}
 
-func (node IfLetExpressionASTNode) Group() ASTNodeGroup        { return ExpressionASTNodeGroup }
-func (node IfVarExpressionASTNode) Group() ASTNodeGroup        { return ExpressionASTNodeGroup }
-func (node NullCoalesceExpressionASTNode) Group() ASTNodeGroup { return ExpressionASTNodeGroup }
-func (node BubbleValueToReturnASTNode) Group() ASTNodeGroup    { return ExpressionASTNodeGroup }
-func (node BinaryExpressionASTNode) Group() ASTNodeGroup       { return ExpressionASTNodeGroup }
-func (node PostfixUnaryExpressionASTNode) Group() ASTNodeGroup { return ExpressionASTNodeGroup }
-func (node PrefixUnaryExpressionASTNode) Group() ASTNodeGroup  { return ExpressionASTNodeGroup }
-func (node StructureInitilisationExpressionASTNode) Group() ASTNodeGroup {
-	return ExpressionASTNodeGroup
+func (node IfLetExpressionASTNode) Group() *ASTNodeGroup        { return &ExpressionASTNodeGroup }
+func (node IfVarExpressionASTNode) Group() *ASTNodeGroup        { return &ExpressionASTNodeGroup }
+func (node NullCoalesceExpressionASTNode) Group() *ASTNodeGroup { return &ExpressionASTNodeGroup }
+func (node BubbleValueToReturnASTNode) Group() *ASTNodeGroup    { return &ExpressionASTNodeGroup }
+func (node BinaryExpressionASTNode) Group() *ASTNodeGroup       { return &ExpressionASTNodeGroup }
+func (node PostfixUnaryExpressionASTNode) Group() *ASTNodeGroup { return &ExpressionASTNodeGroup }
+func (node PrefixUnaryExpressionASTNode) Group() *ASTNodeGroup  { return &ExpressionASTNodeGroup }
+func (node StructureInitilisationExpressionASTNode) Group() *ASTNodeGroup {
+	return &ExpressionASTNodeGroup
 }
-func (node StructureRefInitilisationExpressionASTNode) Group() ASTNodeGroup {
-	return ExpressionASTNodeGroup
+func (node StructureRefInitilisationExpressionASTNode) Group() *ASTNodeGroup {
+	return &ExpressionASTNodeGroup
 }
-func (node FunctionCallExpressionASTNode) Group() ASTNodeGroup      { return ExpressionASTNodeGroup }
-func (node MethodCallExpressionASTNode) Group() ASTNodeGroup        { return ExpressionASTNodeGroup }
-func (node MemberExpressionASTNode) Group() ASTNodeGroup            { return ExpressionASTNodeGroup }
-func (node ModulePathASTNode) Group() ASTNodeGroup                  { return ExpressionASTNodeGroup }
-func (node LambdaExpressionASTNode) Group() ASTNodeGroup            { return ExpressionASTNodeGroup }
-func (node IfExpressionASTNode) Group() ASTNodeGroup                { return ExpressionASTNodeGroup }
-func (node MatchExpressionASTNode) Group() ASTNodeGroup             { return ExpressionASTNodeGroup }
-func (node WhenExpressionASTNode) Group() ASTNodeGroup              { return ExpressionASTNodeGroup }
-func (node TernaryExpressionASTNode) Group() ASTNodeGroup           { return ExpressionASTNodeGroup }
-func (node OptionalChainingASTNode) Group() ASTNodeGroup            { return ExpressionASTNodeGroup }
-func (node TypeCastableQueryExpressionASTNode) Group() ASTNodeGroup { return ExpressionASTNodeGroup }
-func (node TypeCastExpressionASTNode) Group() ASTNodeGroup          { return ExpressionASTNodeGroup }
+func (node FunctionCallExpressionASTNode) Group() *ASTNodeGroup      { return &ExpressionASTNodeGroup }
+func (node MethodCallExpressionASTNode) Group() *ASTNodeGroup        { return &ExpressionASTNodeGroup }
+func (node MemberExpressionASTNode) Group() *ASTNodeGroup            { return &ExpressionASTNodeGroup }
+func (node ModulePathASTNode) Group() *ASTNodeGroup                  { return &ExpressionASTNodeGroup }
+func (node LambdaExpressionASTNode) Group() *ASTNodeGroup            { return &ExpressionASTNodeGroup }
+func (node IfExpressionASTNode) Group() *ASTNodeGroup                { return &ExpressionASTNodeGroup }
+func (node MatchExpressionASTNode) Group() *ASTNodeGroup             { return &ExpressionASTNodeGroup }
+func (node WhenExpressionASTNode) Group() *ASTNodeGroup              { return &ExpressionASTNodeGroup }
+func (node TernaryExpressionASTNode) Group() *ASTNodeGroup           { return &ExpressionASTNodeGroup }
+func (node OptionalChainingASTNode) Group() *ASTNodeGroup            { return &ExpressionASTNodeGroup }
+func (node TypeCastableQueryExpressionASTNode) Group() *ASTNodeGroup { return &ExpressionASTNodeGroup }
+func (node TypeCastExpressionASTNode) Group() *ASTNodeGroup          { return &ExpressionASTNodeGroup }
 
 func (node IfLetExpressionASTNode) statementNode()                      {}
 func (node IfVarExpressionASTNode) statementNode()                      {}
